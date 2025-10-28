@@ -1,0 +1,151 @@
+#============================================================
+#------------------------------------------------------------
+# SCRIPT TO MAKE AROME PGD files (FA)
+#------------------------------------------------------------
+# Domain: LELAM_FRANCE
+#------------------------------------------------------------
+#============================================================
+
+CNMEXPL=L3_PGDI_LELAM_FRANCE
+
+export DR_HOOK_NOT_MPI=1
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+
+# must have this to tun PGD with CY49
+export DR_HOOK_ASSERT_MPI_INITIALIZED=0
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.selnam_pgd OPTIONS.nam
+\cat < OPTIONS.nam
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+# * clay, sand
+
+$ECP ${FILE_PATH_PGD}/SAND_HWSD_MOY.dir      sand.dir
+$ECP ${FILE_PATH_PGD}/SAND_HWSD_MOY.hdr      sand.hdr
+
+$ECP ${FILE_PATH_PGD}/CLAY_HWSD_MOY.dir      clay.dir
+$ECP ${FILE_PATH_PGD}/CLAY_HWSD_MOY.hdr      clay.hdr
+
+# * orography
+
+$ECP ${FILE_PATH_PGD}/GMTED2010_075.EHdr.dir     gmted075.dir
+$ECP ${FILE_PATH_PGD}/GMTED2010_075.EHdr.hdr     gmted075.hdr
+
+# * ecoclimap
+
+$ECP ${FILE_PATH_PGD}/ECOCLIMAP_I_GLOBAL_V1.3_BIELO.dir      ecoclimap.dir
+$ECP ${FILE_PATH_PGD}/ECOCLIMAP_I_GLOBAL_V1.3_BIELO.hdr      ecoclimap.hdr
+
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapI_covers_param.bin ecoclimapI_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_af_covers_param.bin ecoclimapII_af_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_covers_param.bin
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN PGDEXE
+
+set +x
+echo ""
+echo " PGDEXE job running "
+echo ""
+set -x
+
+$MPILAUNCH ./PGDEXE $ZOPT >lola 2>&1
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+set +x
+echo ""
+echo " Expand file LISTING_PGD.txt"
+echo ""
+set -x
+\cat LISTING_PGD.txt
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    set +x
+    echo ""
+    echo " Expand file $file"
+    echo ""
+    set -x
+    \cat $file
+  done
+fi
+
+#      ***********************************
+#      *  Save model results             *
+#      ***********************************
+
+set +x
+echo ""
+echo " Save PGD files "
+echo ""
+set -x
+
+OUTNAME="${CNMEXPL}"
+
+# save PGD files
+$CP PGDFILE.2.5km_FRANGP.fa ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PGDFILE.2.5km_FRANGP.fa
+
+set +x
+echo ""
+echo " Present files on the workdir $TEMPORAIRE "
+echo ""
+set -x
+ls -l
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

@@ -1,0 +1,165 @@
+#============================================================
+#------------------------------------------------------------
+# Configuration 401HYD (Test of adjoint code)
+#  Adiabatic forecast
+#  Dynamical core: thin-layer hydrostatic model.
+#  Advection: Eulerian
+#  Vertical discretisation: vertical finite differences (VFD)
+#  No initialisation
+#------------------------------------------------------------
+#  Resolution: TL31L15C1; 15 vertical levels.
+#  Start date: 15 Jul 2005 00TU.
+#  Timestep and range: see in namelist.
+#------------------------------------------------------------
+#============================================================
+
+CNMEXPL=GM_C401_HYD_EUL_VFD_ADIAB_TL031U
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+CNMEXPS="ARPE"
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}.nam > namprovi
+
+\cat < namprovi
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+# Initial conditions:
+$ECP ${FILE_PATH}/B0312005071500L.C010.032l.L15 EBAUCHE
+$CP EBAUCHE ICMSH${CNMEXPS}INIT
+chmod 644 ICMSH${CNMEXPS}INIT
+$CP ICMSH${CNMEXPS}INIT ICMSH${CNMEXPS}IMIN
+
+# Constants for RRTM radiation scheme: none
+# Constants for SRTM radiation scheme: none
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN ARPEXE
+
+# ----------------------------------------------------------------------------
+
+set +x
+echo ""
+echo " Copy namelist on fort.4 "
+echo ""
+set -x
+$CP namprovi fort.4
+
+set +x
+echo ""
+echo " Job running "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+ls -l
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    set +x
+    echo ""
+    echo " Expand file $file "
+    echo ""
+    set -x
+    \cat $file
+  done
+fi
+
+\rm fort.4
+\rm lola
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    \rm $file
+  done
+fi
+\rm ifs.stat
+\rm -f core*
+
+# ----------------------------------------------------------------------------
+
+#      ***********************************
+#      *  Save model results             *
+#      ***********************************
+
+set +x
+echo ""
+echo " Save model results "
+echo ""
+set -x
+
+# nothing done for the time being
+
+set +x
+echo ""
+echo " Present files on the workdir $TEMPORAIRE "
+echo ""
+set -x
+ls -l
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

@@ -1,0 +1,8 @@
+GM_FCST_HYD_SL2_VFD_ADIAB_SETTLS_VESL_TL031U                                /home/gmap/mrpe/mary/rootpack/CY49T2_main.00.IMPIIFCI2302SP.y/bin/MASTERODB
+GM_FPOF_HYD_SPGAUSS_L2H                                                     /home/gmap/mrpe/mary/rootpack/CY49T2_main.00.IMPIIFCI2302SP.y/bin/MASTERODB
+GM_FPOF_HYD_SPGAUSS_H2L                                                     /home/gmap/mrpe/mary/rootpack/CY49T2_main.00.IMPIIFCI2302SP.y/bin/MASTERODB
+GM_FCTI_HYD_SL2_VFE_ARPPHYISBA_SLT_IOSV_TL798S                              /home/gmap/mrpe/mary/rootpack/CY49T2_main.00.IMPIIFCI2302SP.y/bin/MASTERODB
+GM_FCTI_HYD_SL2_VFE_ARPPHYISBA_FLT_IOSV_TL798S                              /home/gmap/mrpe/mary/rootpack/CY49T2_main.00.IMPIIFCI2302SP.y/bin/MASTERODB
+GM_FCTI_HYD_SL2_VFE_ARPPHYISBA_SLT_TL798S                                   /home/gmap/mrpe/mary/rootpack/CY49T2_main.00.IMPIIFCI2302SP.y/bin/MASTERODB
+GM_FCTI_HYD_SL2_VFE_ARPPHYSFEX_SLT_TL798S                                   /home/gmap/mrpe/mary/rootpack/CY49T2_main.00.IMPIIFCI2302SP.y/bin/MASTERODB
+GM_FCTI_HYD_SL2_VFE_ARPPHYSFEX_SLT_IOSV_TL798S                              /home/gmap/mrpe/mary/rootpack/CY49T2_main.00.IMPIIFCI2302SP.y/bin/MASTERODB

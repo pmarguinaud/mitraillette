@@ -1,0 +1,48 @@
+***Mitraillette***
+=======================
+MITRAILLETTE is a software designed to do some basic validations on ARPEGE, ALADIN, AROME, and
+versions used by ALADIN or HIRLAM partners. It is shared between METEO-FRANCE, ALADIN partners and
+HIRLAM partners. It is currently not used by ECMWF.
+
+The current design of MITRAILLETTE allows to use it on different machines with minimal adaptations
+concentrated in a reduced number of environnement files: that allows a minimal amount of work when scripts must
+be adapted to a new machine. The design has been adapted in order that introduction of new configurations to
+validate will be easy for everybody.
+
+***Structure of the repository***
+=======================
+- doc\_mitraillette\_v042018.pdf : old but complete documentation
+
+- PRO\_FILE.\[cycle\_name\] : file with the list of experiments to test for each cycle.
+ PRO\_FILE.\[cycle\_name\]\_arpref => arpege
+ PRO\_FILE.\[cycle\_name\]\_aldref => aladin
+
+- mitraillette.x : script to run the tests; to run the test do : 
+mitraillette.x CY50 PRO\_FILE.CY50\_arpref
+
+- namelist directory : Fortran namelist to run for each test case
+
+- io\_serv\_tools directory : utilities to run the io server
+
+- protojobs directory : - for each test case there is a .pjob file, these pjob
+files are used to run the test case. 
+                        - [computer_name] : info to run mitraillette on a specific machine.
+                         
+- mitraillette.v102025.txt : some comments
+
+***Running the test case***
+=======================
+- see doc\_mitraillette\_v042018.pdf
+
+- short resume : 
+  1) define STATION to the computer you are using (the directory for that computer
+must exists in protojobs/\[STATION\].
+  2) choose the  PRO_FILE that you want to use, and edit it keeping the experiments
+you want to run. Then update the path to the path to your executable.
+  3) for example run ./mitraillette.x CY50T1 PRO_FILE.CY50T1
+
+***Requirements***
+------------------
+
+- Having an IAL binary 
+

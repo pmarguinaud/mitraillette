@@ -1,0 +1,103 @@
+ Version MITRAILLETTE: December 2019 (v122019)
+ Namelists valid for CY46T1.
+ Operational suite basis:  cy43t2_op2
+ Compliant with V8.0 of SURFEX
+ Enters GIT library CY46T1
+
+ ======================================================================================
+
+ L1_.. : LAM 1D model
+ L2_.. : LAM 2D model
+ L3_.. : LAM 3D model
+ GM_.. : Global model, LECMWF=F
+ GE_.. : Global model, LECMWF=T
+
+ ======================================================================================
+
+ Namelists must be compliant with some norms described in documentation.
+
+ All namelists ending by .nam have the same elements as "vide"
+
+ In namelist naming there is a group of characters for type of physics:
+  for example ARPPHYISBA means upper air physics=ARPEGE one, surface scheme is ISBA.
+
+ ======================================================================================
+
+ Transform diabatic namelists into adiabatic ones:
+ * For namelist elements which are present in "vv_adiab_physics":
+   fill them according to the content of vv_adiab_physics.
+ * Additionally:
+   - LAROME=F
+   - No CFU
+   - No XFU
+   - No ISP
+   - No diabatic DDH
+   - No PHYSOL, CFU, XFU FULLPOS diagnostics.
+   - No reference to NSFXHISTS, N1SFXHIS.
+   - Adapt the list of GFL (generally, only Q is kept), adapt NAMGFL.
+     Check attributes LGP, LSP, LGPINGP, LCDERS, LQM, NREQIN, LSLHD, NCOUPLING.
+     Ex for adiabatic AROME:
+      &NAMGFL
+        YQ_NL%LGP=.TRUE.,
+        YQ_NL%LSP=.FALSE.,
+        YQ_NL%LGPINGP=.TRUE.,
+        YQ_NL%LCDERS=.FALSE.,
+        YQ_NL%LQM=.TRUE.,
+        YQ_NL%NREQIN=1,
+        YQ_NL%LSLHD=.FALSE.,
+        YQ_NL%NCOUPLING=1,
+      /
+   - Value of LSLHD_GFL must be checked (must be consistent with NAMGFL).
+     Ex for adiabatic AROME: LSLHD_GFL=.FALSE.
+
+ ======================================================================================
+
+ For increased output level: change NPRINTLEV=0 into NPRINTLEV=1
+ For bound checking and debug mode: change NUNDEFLD=-99999999 into NUNDEFLD=1
+ For testing with a very small timestep: no DFI
+  - change LDFI=.TRUE. into LDFI=.FALSE.
+  - change LXXGST=.TRUE. into LXXGST=.FALSE.
+  - change LXMWINDCLS=.TRUE. into LXMWINDCLS=.FALSE.
+
+ ======================================================================================
+
+ To use "alignnamelist":
+
+ j=" (all these namelists) "
+ for i in $j
+ do
+   clear
+   echo " traitement de la namelist $i "
+   cp $i old_$i
+   alignnamelist vide $i
+   \mv ${i}.new $i
+ done
+
+ Check by vimdiff that namelists are correctly updated
+ for i in $j
+ do
+   vimdiff $i old_$i
+ done
+
+ Check by diff that namelists are correctly updated
+ for i in $j
+ do
+   clear
+   echo $i
+   diff $i old_$i
+   sleep 1
+ done
+
+ ======================================================================================
+
+ Modifications since v042018:
+ - Add new gabarits: OC1300, OC1000, OC0750, OC0375, TL1198C064FR
+ - Add ARPEGE-SURFEX with restart (GM_FCTI_HYD_SL2_VFE_ARPPHYSFEX_SLT_RESTIOS_TL798S)
+ - Add AROME-SURFEX with restart (L3_FCST_HYD_SL2_VFD_AROPHYSFEX_REST_AROMALP1300)
+ - Add some validations with LNHEE_LAPL_FIRST=T and LSI_NHEE=T (gabarits with NGWADV2)
+ - Add gabarits for global academic cases (gabarits with DCMIP)
+ - VFE-NH: test always with LVFE_DELNHPRE=F, LVFE_X_TERM=F.
+ - References to KYHOME and NHOME changed into FILE_PATH_EXPS in protojobs
+ - ...... to do ..........   !!!!!
+
+ ======================================================================================

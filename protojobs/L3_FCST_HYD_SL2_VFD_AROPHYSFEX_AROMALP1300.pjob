@@ -1,0 +1,227 @@
+#============================================================
+#------------------------------------------------------------
+# Configuration 001HYD (AROME type forecast)
+#  Forecast with physics.
+#  Upper-air physics: AROME one.
+#  Surface physics: SURFEX.
+#  Dynamical core: thin-layer hydrostatic model.
+#  Advection: SL2TL
+#  Vertical discretisation: vertical finite differences (VFD)
+#  No initialisation
+#------------------------------------------------------------
+#  Domain: AROME-AROMALP1300
+#  Resolution: Dx=1.3km; 90 vertical levels.
+#  Start date: 04 Jun 2016 00TU.
+#  Timestep and range: see in namelist.
+#------------------------------------------------------------
+#============================================================
+
+CNMEXPL=L3_FCST_HYD_SL2_VFD_AROPHYSFEX_AROMALP1300
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+CNMEXPS="ARPE"
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+
+$CP ${NAM_PATH}/arome.selnam_fp_0 selectfp0
+$CP selectfp0 xxt00000000
+$CP ${NAM_PATH}/arome.selnam_fp_3 selectfp3
+$CP selectfp3 xxt00000300
+$CP ${NAM_PATH}/arome.selnam_fp_3 selectfp6
+$CP selectfp6 xxt00000600
+$CP ${NAM_PATH}/arome.selnam_fp_3 selectfp9
+$CP selectfp9 xxt00000900
+$CP ${NAM_PATH}/arome.selnam_fp_3 selectfp12
+$CP selectfp12 xxt00001200
+$CP ${NAM_PATH}/arome.selnam_exseg1 EXSEG1.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}.nam > namprovi
+
+\cat < namprovi
+\cat < EXSEG1.nam
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+# Initial conditions:
+$ECP ${FILE_PATH}/AROMALP1300_20160604r12_INIT ICMSH${CNMEXPS}INIT
+
+# LBC:
+for iech in 00 01 02 03 04 05 06
+do
+ case $iech in
+   00) icoupl='000' ;;
+   01) icoupl='001' ;;
+   02) icoupl='002' ;;
+   03) icoupl='003' ;;
+   04) icoupl='004' ;;
+   05) icoupl='005' ;;
+   06) icoupl='006' ;;
+ esac
+ $ECP ${FILE_PATH}/AROMALP1300_20160604r12_COUPL00${iech}  ELSCF${CNMEXPS}ALBC${icoupl}
+done
+
+# departure climatology for in-line FULL-POS:
+$ECP ${FILE_PATH}/clim_arome_ALP1300.m06 Const.Clim
+
+# arrival climatology for in-line FULL-POS:
+$ECP ${FILE_PATH}/clim_dap.franxl0013.m06 const.clim.FRANXL0013
+
+# Files for SURFEX:
+$ECP ${FILE_PATH}/AROMALP1300_20160604r12_SURF ICMSH${CNMEXPS}INIT.sfx
+$ECP ${FILE_PATH}/PGDFILE_lalon_ALP1300.fa Const.Clim.sfx
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapI_covers_param.bin ecoclimapI_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_af_covers_param.bin ecoclimapII_af_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_covers_param.bin
+
+# Constants for RRTM radiation scheme:
+$ECP ${FILE_PATH_RRTMCST}/* .
+
+# Constants for SRTM radiation scheme: not used currently
+##neu $ECP ${FILE_PATH_SRTMCST}/* .
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN ARPEXE
+
+set +x
+echo ""
+echo " Copy namelist on fort.4 "
+echo ""
+set -x
+$CP namprovi fort.4
+
+set +x
+echo ""
+echo " Job running "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+\rm fort.4
+ls -l
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    set +x
+    echo ""
+    echo " Expand file $file"
+    echo ""
+    set -x
+    \cat $file
+  done
+fi
+
+if [ -a OUTPUT_LISTING ]
+then
+  set +x
+  echo ""
+  echo " Expand file OUTPUT_LISTING "
+  echo ""
+  set -x
+  \cat OUTPUT_LISTING
+fi
+
+set +x
+echo ""
+echo " Expand file ifs.stat "
+echo ""
+set -x
+\cat ifs.stat
+
+#      ***********************************
+#      *  Save model results             *
+#      ***********************************
+
+set +x
+echo ""
+echo " Save model results "
+echo ""
+set -x
+
+OUTNAME="${CNMEXPL}"
+
+for iech in 00 01 02 03 04
+do
+  $CP ICMSH${CNMEXPS}+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.HIST
+done
+
+for iech in 03
+do
+  $CP PF${CNMEXPS}FRANXL0013+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.FRANXL0013
+done
+
+## for iech in 03
+## do
+##   $CP AROMOUT_.00${iech}.des ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.AROMOUT.des
+##   $CP AROMOUT_.00${iech}.fa ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.AROMOUT.fa
+## done
+
+set +x
+echo ""
+echo " Present files on the workdir $TEMPORAIRE "
+echo ""
+set -x
+ls -l
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

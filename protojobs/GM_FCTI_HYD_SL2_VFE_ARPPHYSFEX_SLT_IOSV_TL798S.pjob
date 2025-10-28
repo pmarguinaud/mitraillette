@@ -1,0 +1,179 @@
+#============================================================
+#------------------------------------------------------------
+# Configuration 001HYD (forecast)
+#  Forecast with physics.
+#  Upper-air physics: ARPEGE one.
+#  Surface physics: SURFEX.
+#  Dynamical core: thin-layer hydrostatic model.
+#  Advection: SL2TL
+#  Vertical discretisation: vertical finite elements (VFE)
+#  Initialisation by DFI
+#  IO server on.
+#  Standard Legendre transforms.
+#------------------------------------------------------------
+#  Resolution: TL798c2.4; 90 vertical levels.
+#  Start date: 15 Jul 2017 18TU.
+#  Timestep and range: see in namelist.
+#------------------------------------------------------------
+#============================================================
+
+CNMEXPL=GM_FCTI_HYD_SL2_VFE_ARPPHYSFEX_SLT_IOSV_TL798S
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+CNMEXPS="ARPE"
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+
+$CP ${NAM_PATH}/${CNMEXPL}.selnam_exseg1 EXSEG1.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}.nam > namprovi
+
+\cat < namprovi
+\cat < EXSEG1.nam
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+# Initial conditions:
+$ECP ${FILE_PATH}/F7982017071518L.C024.L90pearp.prod_INIT ICMSH${CNMEXPS}INIT
+
+# Files for SURFEX:
+$ECP ${FILE_PATH}/F7982017071518L.C024.L90pearp.prod_SURF ICMSH${CNMEXPS}INIT.sfx
+$ECP ${FILE_PATH}/PGDFILE_pearp.t798.01.fa Const.Clim.sfx
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapI_covers_param.bin ecoclimapI_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_af_covers_param.bin ecoclimapII_af_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_covers_param.bin
+
+# Constants for RRTM radiation scheme:
+$ECP ${FILE_PATH_RRTMCST}/* .
+
+# Constants for SRTM radiation scheme: not used currently
+##neu $ECP ${FILE_PATH_SRTMCST}/* .
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN ARPEXE
+
+set +x
+echo ""
+echo " Copy namelist on fort.4 "
+echo ""
+set -x
+$CP namprovi fort.4
+
+set +x
+echo ""
+echo " Job running "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+# readdress io_serv outputs (this needs fort.4 or explicit number of io tasks)
+$IOPOLL --prefix ICMSH
+
+\rm fort.4
+ls -l
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    set +x
+    echo ""
+    echo " Expand file $file "
+    echo ""
+    set -x
+    \cat $file
+  done
+fi
+
+set +x
+echo ""
+echo " Expand file ifs.stat "
+echo ""
+set -x
+\cat ifs.stat
+
+#      ***********************************
+#      *  Save model results             *
+#      ***********************************
+
+set +x
+echo ""
+echo " Save model results "
+echo ""
+set -x
+
+OUTNAME="${CNMEXPL}"
+
+$LFIMV ICMSH${CNMEXPS}+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0006.HIST
+
+$CP DHFDL${CNMEXPS}+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0006.DDHFDL
+$CP DHFZO${CNMEXPS}+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0006.DDHFZO
+
+set +x
+echo ""
+echo " Present files on the workdir $TEMPORAIRE "
+echo ""
+set -x
+ls -l
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

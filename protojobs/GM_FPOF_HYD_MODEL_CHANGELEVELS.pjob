@@ -1,0 +1,257 @@
+#============================================================
+#------------------------------------------------------------------------
+# Off-line FULLPOS
+#  SPGAUSS towards SPGAUSS (CFPFMT='MODEL')
+#  Adiabatic
+#  Dynamical core: thin-layer hydrostatic model.
+#  Change set of vertical levels.
+#  Test validity of this set of vertical levels for VFE+(LVFE_REGETA=F)
+#  - first one FULL-POS job with change of vertical levels
+#  - then three set-up VFE+(LVFE_REGETA=F) with
+#    (SITR,SIPR)=(300,100000),(350,100000),(300,80000)
+#------------------------------------------------------------------------
+#============================================================
+
+CNMEXPL=GM_FPOF_HYD_MODEL_CHANGELEVELS
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+CNMEXPS="ARPE"
+
+idate=2005071500
+insmaxa=031 # sur 3 chiffres minimum
+indgl=032   # sur 3 chiffres minimum
+indlon=064  # sur 3 chiffres minimum
+inflevg=15
+inflevgfin=105
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}_fp.nam ${CNMEXPL}_fp.nam
+$CP ${NAM_PATH}/${CNMEXPL}_fc.nam ${CNMEXPL}_fc.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}_fp.nam > namprovi_fp
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}_fc.nam > namprovi_fc
+
+$CP namprovi_fp namprovi0
+
+sed -e "s/val_sitr/300./" -e "s/val_sipr/100000./" namprovi_fc > namprovi1
+sed -e "s/val_sitr/350./" -e "s/val_sipr/100000./" namprovi_fc > namprovi2
+sed -e "s/val_sitr/300./" -e "s/val_sipr/80000./" namprovi_fc > namprovi3
+
+#      *********************************
+#      *  Execution                    *
+#      *********************************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN ARPEXE
+
+# -----------------------------------------------------------------------------
+# JOB NO 0: FULLPOS
+
+set +x
+echo " "
+echo " ======= "
+echo " FULLPOS "
+echo " ======= "
+set -x
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+$ECP ${FILE_PATH}/B${insmaxa}${idate}L.C010.${indgl}l.L${inflevg} EBAUCHE
+$CP EBAUCHE ICMSH${CNMEXPS}INIT
+chmod 644 ICMSH${CNMEXPS}INIT
+
+# Constants for RRTM radiation scheme: none
+# Constants for SRTM radiation scheme: none
+
+set +x
+echo ""
+echo " Copy namelist on fort.4 "
+echo ""
+set -x
+\cat < namprovi0
+$CP namprovi0 fort.4
+\rm namprovi0
+
+set +x
+echo ""
+echo " Job no 0 running "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+\rm fort.4
+ls -l
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    set +x
+    echo ""
+    echo " Expand file $file "
+    echo ""
+    set -x
+    \cat $file
+  done
+fi
+
+ls -l
+
+\rm lola
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    \rm $file
+  done
+fi
+\rm ifs.stat
+\rm -f core*
+
+## $CP PF${CNMEXPS}000+0000 ${FILE_PATH}/B${insmaxa}${idate}L.C010.${indgl}l.L${inflevgfin}
+
+# -----------------------------------------------------------------------------
+# JOBS NO 1, 2, 3: FORECAST
+
+for inum in 1 2 3
+do
+
+set +x
+echo " "
+echo " ================ "
+echo " FORECAST ${inum} "
+echo " ================ "
+set -x
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+$CP PF${CNMEXPS}000+0000 ICMSH${CNMEXPS}INIT
+
+set +x
+echo ""
+echo " Copy namelist on fort.4 "
+echo ""
+set -x
+\cat < namprovi${inum}
+$CP namprovi${inum} fort.4
+\rm namprovi${inum}
+
+set +x
+echo ""
+echo " Job no ${inum} running "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+\rm fort.4
+ls -l
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    set +x
+    echo ""
+    echo " Expand file $file "
+    echo ""
+    set -x
+    \cat $file
+  done
+fi
+
+ls -l
+
+\rm lola
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    \rm $file
+  done
+fi
+\rm ifs.stat
+\rm -f core*
+
+done # inum
+
+\rm *
+
+# -----------------------------------------------------------------------------
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

@@ -1,0 +1,225 @@
+#============================================================
+#------------------------------------------------------------
+# Configuration 001NHE (forecast)
+#  Forecast with physics.
+#  Upper-air physics: ARPEGE one.
+#  Surface physics: ISBA.
+#  Dynamical core: thin-layer (fully compressible) non-hydrostatic model.
+#  Advection: SL2TL
+#  Vertical discretisation: vertical finite differences (VFD)
+#  No initialisation
+#  LRDBBC=T; ND4SYS=2; CheapPC
+#  IO server off.
+#  Standard Legendre transforms.
+#------------------------------------------------------------
+#  Resolution: TL1198c6.4 France; 105 vertical levels.
+#  Timestep and range: see in namelist.
+#------------------------------------------------------------
+#============================================================
+
+CNMEXPL=GM_FCST_NHE_SL2_VFD_ARPPHYISBA_RDBBC2_PCC_TL1198C064FR
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+CNMEXPS="ARPE"
+
+iaa=2015
+imm=01
+ijj=22
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}.nam > namprovi
+
+\cat < namprovi
+
+$CP ${NAM_PATH}/${CNMEXPL}.selnam_fp_0 sel_0
+$CP ${NAM_PATH}/${CNMEXPL}.selnam_fp_3 sel_3
+$CP ${NAM_PATH}/${CNMEXPL}.selnam_fp_6 sel_6
+
+\ln -s sel_0 xxt00000000
+
+\ln -s sel_3 xxtdddd03mm
+\ln -s sel_3 xxtdddd09mm
+\ln -s sel_3 xxtdddd15mm
+\ln -s sel_3 xxtdddd21mm
+
+\ln -s sel_6 xxtdddd00mm
+\ln -s sel_6 xxtdddd06mm
+\ln -s sel_6 xxtdddd12mm
+\ln -s sel_6 xxtdddd18mm
+
+\cat < sel_0
+\cat < sel_3
+\cat < sel_6
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+# Initial conditions:
+## $ECP ${FILE_PATH}/F1198.${iaa}${imm}${ijj}00L.C064.france.L105AB.NH ICMSH${CNMEXPS}INIT
+$ECP ${FILE_PATH_EXPS}/anal/aadir_TL1198L105C064france/F1198.${iaa}${imm}${ijj}00L.C064.france.L105AB.NH ICMSH${CNMEXPS}INIT
+
+# Constants for RRTM radiation scheme:
+$ECP ${FILE_PATH_RRTMCST}/* .
+
+# Constants for SRTM radiation scheme: not used currently
+##neu $ECP ${FILE_PATH_SRTMCST}/* .
+
+# Filtering matrices:
+## $ECP ${FILE_PATH}/mat.filter.glob25.07 matrix.fil.GLOB25
+## $ECP ${FILE_PATH}/mat.filter.glob15.07 matrix.fil.GLOB15
+## $ECP ${FILE_PATH}/mat.filter.glob05.03 matrix.fil.GLOB05
+## $ECP ${FILE_PATH}/mat.filter.euroc25.07 matrix.fil.EUROC25
+## $ECP ${FILE_PATH}/mat.filter.eurat01.01 matrix.fil.EURAT01
+
+# Departure climatologies:
+## $ECP ${FILE_PATH}/clim_arpege_france_Tl1198C064.m${imm} Const.Clim
+$ECP ${FILE_PATH_EXPS}/clims/clim_arpege_france_Tl1198C064.m${imm} Const.Clim
+
+# Arrival climatologies:
+$ECP ${FILE_PATH}/clim_dap.glob25.07.m${imm} const.clim.GLOB25
+$ECP ${FILE_PATH}/clim_dap.glob15.07.m${imm} const.clim.GLOB15
+$ECP ${FILE_PATH}/clim_dap.glob05.07.m${imm} const.clim.GLOB05
+$ECP ${FILE_PATH}/clim_dap.euroc25.08.m${imm} const.clim.EUROC25
+$ECP ${FILE_PATH}/clim_dap.eurat01.01.m${imm} const.clim.EURAT01
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN ARPEXE
+
+set +x
+echo ""
+echo " Copy namelist on fort.4 "
+echo ""
+set -x
+$CP namprovi fort.4
+
+set +x
+echo ""
+echo " Job running "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+\rm fort.4
+ls -l
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    set +x
+    echo ""
+    echo " Expand file $file "
+    echo ""
+    set -x
+    \cat $file
+  done
+fi
+
+set +x
+echo ""
+echo " Expand file ifs.stat "
+echo ""
+set -x
+\cat ifs.stat
+
+#      ***********************************
+#      *  Save model results             *
+#      ***********************************
+
+set +x
+echo ""
+echo " Save model results "
+echo ""
+set -x
+
+OUTNAME="${CNMEXPL}"
+
+# Historic files:
+for iech in 06 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96
+do
+  $CP ICMSH${CNMEXPS}+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.HIST
+done
+
+# DDH files:
+for iech in 06 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96
+do
+  $CP DHFDL${CNMEXPS}+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.DDHFDL
+  $CP DHFZO${CNMEXPS}+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.DDHFZO
+done
+
+# Post-processing files:
+for iech in 00 06 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96
+do
+  $CP PF${CNMEXPS}GLOB05+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB05+00${iech}
+  $CP PF${CNMEXPS}EURAT01+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}EURAT01+00${iech}
+  $CP PF${CNMEXPS}EUROC25+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}EUROC25+00${iech}
+done
+
+set +x
+echo ""
+echo " Present files on the workdir $TEMPORAIRE "
+echo ""
+set -x
+ls -l
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

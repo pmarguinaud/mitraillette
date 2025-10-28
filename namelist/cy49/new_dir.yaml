@@ -1,0 +1,6 @@
+# 5. Keys to be set with a value (new or modified). If block is missing, raise an error.
+# Blocks need to be consistent with above movings.
+keys_to_set:
+    NAERAD:
+        NOZOCL: 0
+

@@ -1,0 +1,8 @@
+Pour passer de cy47t1 en cy46t1:
+
+* deplacer LTRAJGP de NAMTRAJ a NAMVAR (C401, C501, C601)
+* enlever les namelists 'NAMJBHYBACV','NAMSATSIM','NAMTRAJ',
+* &NAMDVISI a supprimer 
+
+#* RAF60 et RAF180 ? 'CLSU.RAF60M.XFU', -> 'CLSU.RAF.MOD.XFU',     'CLSV.RAF60M.XFU', -> 'CLSV.RAF.MOD.XFU', ??
+

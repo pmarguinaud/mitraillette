@@ -1,0 +1,158 @@
+#============================================================
+#------------------------------------------------------------
+# SCRIPT TO CONVERT ARPEGE PGD LFI TO FA
+# From "conv_pgd_lfi2fa"
+#------------------------------------------------------------
+# Resolution: TL798c2.4
+#------------------------------------------------------------
+#============================================================
+
+CNMEXPL=GM_PGDC_TL798S
+
+export DR_HOOK_NOT_MPI=1
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+
+domain=ARP_TL798
+imm=01
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+# No namelist for this configuration
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+dir_file_lfi=${WORKDIR}/SURFEX_FILES
+file_lfi=PGD_${domain}.lfi
+file_fa=test
+
+## $CP ${FILE_PATH}/CLIM_MODEL_${domain}_m${imm} ${WORKDIR}/${domain}_m${imm}
+$CP ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/CLIM_MODEL_${domain}_m${imm} ${WORKDIR}/${domain}_m${imm}
+fic_ref_fa=${WORKDIR}/${domain}_m${imm}
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+
+$CP $EXEC_IFSAUX_LFITOOLS PGDCONV
+
+$CP $MYOWNBIN PGDEXE
+
+set +x
+echo ""
+echo " First call to PGDCONV "
+echo ""
+set -x
+
+# Building empty FA file, with the frame of the atmosphere clim 923 fa file
+\rm -f ${file_fa}.fa
+PGDCONV faempty ${fic_ref_fa} ${file_fa}.fa
+
+set +x
+echo ""
+echo " PGDEXE job running "
+echo ""
+set -x
+
+# Converting lfi to fa by adding articles in the empty fa file
+PGDEXE sfxlfi2fa --sfx-fa--file ${file_fa}.fa --sfx-lfi-file ${dir_file_lfi}/${file_lfi}
+
+$MPILAUNCH ./PGDEXE $ZOPT >lola 2>&1
+
+set +x
+echo ""
+echo " Replacing PGD orography by the atmospheric one, taken from the clim 923 file "
+echo ""
+set -x
+
+# Replacing PGD orography by the atmospheric one, taken from the clim 923 file
+cat << EOF > dirfa
+OUV
+77 T fic1 OLD T T 2 0 cadre
+OUV
+88 T fic2 OLD T T 2 0 cadre
+CILE
+77 SURF 0 GEOPOTENTIEL F
+OP
+ZTAB '/' 9.80665
+GOTE
+88 0 24 24 10 1 5
+IENC
+88 SFX. 0 ZS F
+FER
+77 KEEP
+FER
+88 KEEP
+FIN
+EOF
+
+# 923 atmosphere clim file:
+$CP ${fic_ref_fa} fic1
+# FA PGD file:
+$CP ${file_fa}.fa fic2
+
+set +x
+echo ""
+echo " Second call to PGDCONV "
+echo ""
+set -x
+
+PGDCONV testfa < dirfa
+
+#      ***********************************
+#      *  Save model results             *
+#      ***********************************
+
+set +x
+echo ""
+echo " Save PGD files "
+echo ""
+set -x
+
+OUTNAME="${CNMEXPL}"
+
+# save PGD files
+## $CP fic2 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__${file_lfi}_conv.fa
+$CP fic2 ${WORKDIR}/SURFEX_FILES/${file_lfi}_conv.fa
+
+set +x
+echo ""
+echo " Present files on the workdir $TEMPORAIRE "
+echo ""
+set -x
+ls -l
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

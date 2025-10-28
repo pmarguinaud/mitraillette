@@ -1,0 +1,163 @@
+#============================================================
+#------------------------------------------------------------------
+# Off-line FULLPOS
+#  SPGAUSS towards SPLELAM C+I+E for surface fields
+#  Surface physics: SURFEX
+#  Dynamical core: thin-layer hydrostatic model.
+#  Vertical discretisation: vertical finite differences (VFD)
+#------------------------------------------------------------------
+#============================================================
+
+CNMEXPL=GM_FPOF_HYD_SURFLELAM
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+CNMEXPS="ARPE"
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}.nam > namprovi
+
+\cat < namprovi
+
+$CP ${NAM_PATH}/${CNMEXPL}.selnam_suf PRE_REAL1.nam
+\cat < PRE_REAL1.nam
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+# Initial conditions + clims:
+$ECP ${FILE_PATH}/F11982016060412L.C022.L105AB.operprod ICMSH${CNMEXPS}INIT
+$ECP ${FILE_PATH}/PGDFILE_lalon_ALP1300.fa const.clim.sfx.FRANGP
+$ECP ${FILE_PATH}/clim_arpege.tl1198.01.m06 Const.Clim
+$ECP ${FILE_PATH}/clim_arome_ALP1300.m06 const.clim.FRANGP
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapI_covers_param.bin ecoclimapI_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_af_covers_param.bin ecoclimapII_af_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_covers_param.bin
+
+# Constants for RRTM radiation scheme:
+$ECP ${FILE_PATH_RRTMCST}/* .
+
+# Constants for SRTM radiation scheme: not used currently
+##neu $ECP ${FILE_PATH_SRTMCST}/* .
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN ARPEXE
+
+set +x
+echo ""
+echo " Copy namelist on fort.4 "
+echo ""
+set -x
+$CP namprovi fort.4
+
+set +x
+echo ""
+echo " Job running "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+\rm fort.4
+ls -l
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    set +x
+    echo ""
+    echo " Expand file $file"
+    echo ""
+    set -x
+    \cat $file
+  done
+fi
+
+set +x
+echo ""
+echo " Expand file ifs.stat "
+echo ""
+set -x
+\cat ifs.stat
+
+#      ***********************************
+#      *  Save model results             *
+#      ***********************************
+
+set +x
+echo ""
+echo " Save post-processing files "
+echo ""
+set -x
+
+OUTNAME="${CNMEXPL}"
+
+$CP PF${CNMEXPS}FRANGP+0000.sfx ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0000.AROMOUT.fa
+
+set +x
+echo ""
+echo " Present files on the workdir $TEMPORAIRE "
+echo ""
+set -x
+ls -l
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

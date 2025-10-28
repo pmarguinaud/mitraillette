@@ -1,0 +1,181 @@
+#============================================================
+#------------------------------------------------------------
+# Configuration 001HYD (forecast)
+#  IFS forecast with physics.
+#  Upper-air physics: ECPHYS
+#  Dynamical core: thin-layer hydrostatic model.
+#  Advection: SL2TL
+#  Vertical discretisation: vertical finite differences (VFD)
+#  No initialisation
+#  IO server off.
+#  Standard Legendre transforms.
+#  LVERTFE=LMASCOR=LSLDP_CURV/XYZ/SAVE=LTRCMFIX_PS=.FALSE., Y*%LMASSFIX=.FALSE.
+#------------------------------------------------------------
+#  Resolution: cubic-octahedral TCO399; 137 vertical levels.
+#  Timestep and range: TSTEP=900.0, CSTOP='h12',
+#------------------------------------------------------------
+#============================================================
+
+CNMEXPL=GE_FCST_HYD_SL2_VFD_ECPHY_NCOR_TCO399
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+CNMEXPS="i61v"
+
+iaa=2015
+imm=01
+ijj=22
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}.nam > namprovi
+
+\cat < namprovi
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+# Initial conditions:
+IFS_DATA=${FILE_PATH_IFS}
+$ECP $IFS_DATA/ICMSHi61vINIT                           ICMSH${CNMEXPS}INIT
+$ECP $IFS_DATA/ICMCLi61vINIT                           ICMCL${CNMEXPS}INIT
+$ECP $IFS_DATA/ICMGGi61vINIUA                          ICMGG${CNMEXPS}INIUA
+$ECP $IFS_DATA/ICMGGi61vINIT                           ICMGG${CNMEXPS}INIT
+
+# Clim data
+$ECP $IFS_DATA/399_4                                   399_4
+
+# Constants for RRTM radiation scheme:
+$ECP $IFS_DATA/total_solar_irradiance_CMIP6_49r1.nc    total_solar_irradiance_CMIP6_49r1.nc
+$ECP $IFS_DATA/aerosol_ifs_49R1_20230725.nc            aerosol_ifs_49R1_20230725.nc
+$ECP $IFS_DATA/aerosol_cams_climatology_43r3_v2_3D.nc  aerosol_cams_climatology_43r3_v2_3D.nc
+$ECP ${FILE_PATH_RRTMCST}/* .
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN ARPEXE
+
+grib_api_prefix=$(ldd ARPEXE  | perl -ne ' 
+ next unless (m/libeccodes_f90/o); 
+ my ($path) = (m/=>\s+(\S+)/o); 
+ use File::Basename; 
+ print &dirname (&dirname ($path)), "\n" ')
+
+export ECCODES_SAMPLES_PATH=$grib_api_prefix/share/eccodes/ifs_samples/grib1_mlgrib2/
+
+set +x
+echo ""
+echo " Copy namelist on fort.4 "
+echo ""
+set -x
+$CP namprovi fort.4
+
+set +x
+echo ""
+echo " Job running "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+\rm fort.4
+ls -l
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    set +x
+    echo ""
+    echo " Expand file $file "
+    echo ""
+    set -x
+    \cat $file
+  done
+fi
+
+set +x
+echo ""
+echo " Expand file ifs.stat "
+echo ""
+set -x
+\cat ifs.stat
+
+#      ***********************************
+#      *  Save model results             *
+#      ***********************************
+
+set +x
+echo ""
+echo " Save model results "
+echo ""
+set -x
+
+OUTNAME="${CNMEXPL}"
+
+# Historic files:
+
+set +x
+echo ""
+echo " Present files on the workdir $TEMPORAIRE "
+echo ""
+set -x
+ls -l
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

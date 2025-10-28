@@ -1,0 +1,60 @@
+ Protojobs for MITRAILLETTE validation from October 2025 (v102025)
+ Operational suite basis:  cy43t2_op2
+ Compliant with V8.0 of SURFEX
+
+ ======================================================================================
+
+ L1_.. : LAM 1D model
+ L2_.. : LAM 2D model
+ L3_.. : LAM 3D model
+ GM_.. : Global model, LECMWF=F
+ GE_.. : Global model, LECMWF=T
+
+ ======================================================================================
+
+ Additional information:
+
+ - Compressed files: now .gz files; use "gzip" vs "gzip -d" to compress/uncompress them.
+ - There are no files left with appendix "_ieee". All files are "IEEE" compliant.
+ - There are nb_proct processors (excluding IO_SERVER procs).
+ - There are nb_proca IO_SERVER processors.
+ - The total number of processors is nb_procs = nb_proct + nb_proca.
+ - There are nb_nodes nodes.
+ - There are nb_thrd threads.
+ - nb_prsno is the ratio nb_procs/nb_nodes. nb_procs must be a multiple of nb_nodes.
+ - nb_proc should not appear any longer.
+ - nb_procb is not used for the time being, kept for future evolutions.
+ - Monoproc tasks match nb_procs=1 and nb_nodes=1; but can use more than 1 thread for OpenMp.
+ - Multiproc tasks match nb_procs>1, nb_nodes>=1, nb_thrd>=1.
+ - DR_HOOK statements are now in file "config".
+ - There is no longer reference to file ifs.disp.
+ - No final cleaning of the temporary directory is done.
+ - The former four-digit codes (AA1T, etc) have been removed.
+   Four-digit code used in definitions of CNMEXP and CNMEXPS is now always 'ARPE'.
+ - Local name of executable is now always ARPEXE for both global and LAM configurations.
+
+ Protojobs must be compliant with the following norms:
+
+ - Use double cotes ("), not simple cotes ('), in particuliar for statements 'sed', 'echo'.
+ - Comments and printings in English.
+ - No blank characters at the end of statements.
+ - Statements 'echo' are between 'set +x' and 'set -x'.
+ - Local copies: always $CP, never \cp or cp.
+ - Move, remove, cat, etc: always \mv, \rm, \cat, \ln, never mv, rm, cat, ln.
+
+ ======================================================================================
+
+ Modifications since last release:
+ - Add 10 new jobs:
+GE_FCST_HYD_SL2_VFD_ADIAB_SLXYZ_SPLIT_TCO399
+GE_FCST_HYD_SL2_VFD_ECPHY_NCOR_TCO399
+GE_FCST_HYD_SL2_VFD_ECPHY_SI_TCO399
+GE_FCST_HYD_SL2_VFE_ECPHY_SLRK_TCO399
+GE_FCST_HYD_SL2_VFE_ECPHY_SLXYZ_TCO399
+GM_FCST_HYD_SL2_VFE_ARPPHYISBA_WENO_CONS_TL107U
+GM_FCST_HYD_SL2_VFE_ARPPHYISBA_WENO_TL107U
+GM_FCST_HYD_SL2_VFE_PEARP_PHYSFEX_SLT_TL798S
+L3_FCST_HYD_SL2_CVFE_ADIAB_PGAL
+L3_FCST_NHE_SL2_CVFE_ADIAB_GWADV2_PCF_FROC
+
+ ======================================================================================

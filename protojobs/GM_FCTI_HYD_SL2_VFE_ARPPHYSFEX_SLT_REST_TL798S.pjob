@@ -1,0 +1,244 @@
+#============================================================
+#------------------------------------------------------------
+# Configuration 001HYD (forecast)
+#  Forecast with physics.
+#  Upper-air physics: ARPEGE one.
+#  Surface physics: SURFEX.
+#  Dynamical core: thin-layer hydrostatic model.
+#  Advection: SL2TL
+#  Vertical discretisation: vertical finite elements (VFE)
+#  Initialisation by DFI
+#  IO server off.
+#  Exercise restart capability with SURFEX
+#  Standard Legendre transforms.
+#------------------------------------------------------------
+#  Resolution: TL798c2.4; 90 vertical levels.
+#  Start date: 15 Jul 2017 18TU.
+#  Timestep and range: see in namelist.
+#------------------------------------------------------------
+#============================================================
+
+CNMEXPL=GM_FCTI_HYD_SL2_VFE_ARPPHYSFEX_SLT_REST_TL798S
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+CNMEXPS="ARPE"
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+$CP ${NAM_PATH}/${CNMEXPL}.selnam_exseg1 ${CNMEXPL}.selnam_exseg1
+$CP ${NAM_PATH}/${CNMEXPL}_CONVPGD.nam.diff ${CNMEXPL}_CONVPGD.nam.diff
+$CP ${NAM_PATH}/${CNMEXPL}_CONVPGD.selnam_exseg1.diff ${CNMEXPL}_CONVPGD.selnam_exseg1.diff
+$CP ${NAM_PATH}/${CNMEXPL}_CONVPREP.nam.diff ${CNMEXPL}_CONVPREP.nam.diff
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}.nam > namprovi
+
+\cat < namprovi
+\cat < ${CNMEXPL}.selnam_exseg1
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+# Initial conditions:
+$ECP ${FILE_PATH}/F7982017071518L.C024.L90pearp.prod_INIT ICMSH${CNMEXPS}INIT
+
+# Files for SURFEX:
+$ECP ${FILE_PATH}/F7982017071518L.C024.L90pearp.prod_SURF ICMSH${CNMEXPS}INIT.sfx
+$ECP ${FILE_PATH}/PGDFILE_pearp.t798.01.fa Const.Clim.sfx
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapI_covers_param.bin ecoclimapI_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_af_covers_param.bin ecoclimapII_af_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_covers_param.bin
+
+# Constants for RRTM radiation scheme:
+$ECP ${FILE_PATH_RRTMCST}/* .
+
+# Constants for SRTM radiation scheme: not used currently
+##neu $ECP ${FILE_PATH_SRTMCST}/* .
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN ARPEXE
+
+set +x
+echo ""
+echo " Job running "
+echo ""
+set -x
+
+# Create SURFEX climatology and initial condition file with latest version
+
+$CP namprovi fort.4
+$CP ${CNMEXPL}.selnam_exseg1  EXSEG1.nam
+
+$XPNAM --dfile="${CNMEXPL}_CONVPGD.nam.diff" --inplace fort.4
+$XPNAM --dfile="${CNMEXPL}_CONVPGD.selnam_exseg1.diff" --inplace EXSEG1.nam
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+\mv ICMSH${CNMEXPS}+0000.sfx Const.Clim.sfx.new
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+$XPNAM --dfile="${CNMEXPL}_CONVPREP.nam.diff" --inplace fort.4
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+\mv ICMSH${CNMEXPS}+0000.sfx ICMSH${CNMEXPS}INIT.sfx.new
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+# Reset namelist; forecast up to step 28, dump restart files at step 23, output historic file at step 28
+
+$CP namprovi fort.4
+$CP ${CNMEXPL}.selnam_exseg1  EXSEG1.nam
+
+# Run forescast using SURFEX files in latest version
+
+\rm ICMSH${CNMEXPS}INIT.sfx Const.Clim.sfx
+
+\mv ICMSH${CNMEXPS}INIT.sfx.new ICMSH${CNMEXPS}INIT.sfx
+\mv Const.Clim.sfx.new    Const.Clim.sfx
+
+\ls -l Const.Clim.sfx ICMSH${CNMEXPS}+0000
+
+# Use ARPEGE orography in SURFEX PGD
+
+(
+  export DR_HOOK=0
+  export DR_HOOK_NOT_MPI=1 
+  $LFITOOLS testfa << EOF
+OUV 
+77 T Const.Clim.sfx OLD T T 2 0 c1
+OUV 
+88 T ICMSH${CNMEXPS}+0000 OLD T T 2 0 c2
+RAZ
+CILE
+88 SURF 0 GEOPOTENTIEL F
+OP
+ZTAB * 0.101971621297793
+GOTE
+77 0 0 0 0 0 0
+IENC
+77 SFX. 0 ZS F
+IRME
+77 KEEP
+IRME
+88 KEEP
+STOP
+EOF
+)
+
+\rm ICMSH${CNMEXPS}+0000
+
+# Run model, produce restart files at step 23
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+# Keep interesting files
+for f in NODE.001_01 ICMSH${CNMEXPS}+????
+do
+  \mv $f $f.0
+done
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+\ls -l
+
+# Restart model from step 23 up to step 28
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+# Keep interesting files
+
+for f in NODE.001_01 ICMSH${CNMEXPS}+????
+do
+  \mv $f $f.1
+done
+
+set +x
+echo ""
+echo " Expand file lola"
+echo ""
+set -x
+\cat lola
+
+\ls -l
+
+(
+  export DR_HOOK=0
+  export DR_HOOK_NOT_MPI=1 
+  set +x
+  echo ""
+  echo " Differences between non-interrupted forecast and restarted forecast -------------------------------- "
+  echo ""
+  set -x
+  $LFITOOLS lfidiff --lfi-file-1  ICMSH${CNMEXPS}+0028.0 --lfi-file-2 ICMSH${CNMEXPS}+0028.1
+  set +x
+  echo ""
+  echo " End of differences --------------------------------------------------------------------------------- "
+  echo ""
+  set -x
+)
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"

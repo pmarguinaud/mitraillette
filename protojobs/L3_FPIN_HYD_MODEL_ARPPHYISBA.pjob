@@ -1,0 +1,209 @@
+#============================================================
+#------------------------------------------------------------------
+# In-line FULLPOS
+#  SPLELAM towards SPLELAM (CFPFMT='MODEL')
+#  Upper-air physics: ARPEGE one.
+#  Surface physics: ISBA.
+#  Dynamical core: thin-layer hydrostatic model.
+#  Vertical discretisation: vertical finite differences (VFD)
+#------------------------------------------------------------------
+#============================================================
+
+CNMEXPL=L3_FPIN_HYD_MODEL_ARPPHYISBA
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+export TEMPORAIRE=$TMP_LOC
+cd $TEMPORAIRE || exit
+
+MYOWNBIN=__my_own_bin__
+[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+CYCLE='__v_cycle__'
+CNMEXPS="ARPE"
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the namelist "
+echo ""
+set -x
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+${CNMEXPL}.nam > namprovi1
+
+sed -e "s/NPOSTS(1)=-4/NPOSTS(1)=-3/" namprovi1 > namprovi_prov
+\mv namprovi_prov namprovi2
+
+sed \
+     -e "s/NPOSTS(1)=-4/NPOSTS(1)=-0/" \
+     -e "s/LEQLIMSAT=.TRUE./LEQLIMSAT=.FALSE./" \
+     -e "s/h3/t0/" \
+namprovi1 > namprovi_prov
+\mv namprovi_prov namprovi3
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+set +x
+echo ""
+echo " Get input files "
+echo ""
+set -x
+
+# Initial conditions:
+$ECP ${FILE_PATH}/FRAN_20080710r0_analyse+0000 ICMSH${CNMEXPS}INIT
+
+# LBC:
+$ECP ${FILE_PATH}/FRAN_20080710r0_ope_COUPL0000 ELSCF${CNMEXPS}ALBC000
+$ECP ${FILE_PATH}/FRAN_20080710r0_ope_COUPL0003 ELSCF${CNMEXPS}ALBC001
+
+# Files for SURFEX:
+## none for the time being
+
+# departure climatology:
+## none for the time being
+
+# Constants for RRTM radiation scheme:
+$ECP ${FILE_PATH_RRTMCST}/* .
+
+# Constants for SRTM radiation scheme: not used currently
+##neu $ECP ${FILE_PATH_SRTMCST}/* .
+
+#       **********************************
+#       *   Execution: just the model    *
+#       **********************************
+
+set +x
+echo ""
+echo " Get the executable file "
+echo ""
+set -x
+$CP $MYOWNBIN ARPEXE
+
+set +x
+echo ""
+echo " Copy namelist on fort.4 "
+echo ""
+set -x
+$CP namprovi1 fort.4
+\cat < namprovi1
+
+set +x
+echo ""
+echo " Job running (just the model) "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+
+\rm fort.4
+
+if [ -a NODE.001_01 ]
+then
+  mv NODE.001_01 just_model
+else
+  mv lola just_model
+fi
+
+ls -lrt
+
+\rm -f core.* ifs.* NODE.* lola ncf*
+
+#       **********************************
+#       *    Execution: in-line model    *
+#       **********************************
+
+$CP namprovi2 fort.4
+\cat < namprovi2
+
+set +x
+echo ""
+echo " Job running (in-line model) "
+echo ""
+set -x
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+\rm fort.4
+
+if [ -a NODE.001_01 ]
+then
+  mv NODE.001_01 in_line
+else
+  mv lola in_line
+fi
+
+ls -ltr
+
+\rm -f core.* ifs.* NODE.* lola ncf*
+
+#       **********************************
+#       *    Execution: off-line         *
+#       **********************************
+
+$CP namprovi3 fort.4
+\cat < namprovi3
+
+set +x
+echo ""
+echo " Job running (off line) "
+echo ""
+set -x
+
+\rm ICMSH${CNMEXPS}INIT
+$CP ICMSH${CNMEXPS}+0003 ICMSH${CNMEXPS}INIT
+
+$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+\rm fort.4
+
+if [ -a NODE.001_01 ]
+then
+  mv NODE.001_01 off_line
+else
+  mv lola off_line
+fi
+
+ls -ltr
+
+\rm -f core.* ifs.* NODE.* lola ncf*
+
+#       **********************************
+#       *       Check differences        *
+#       **********************************
+
+set +x
+echo ""
+echo " Check differences  "
+echo ""
+set -x
+
+set +x ; echo "     ******* DIFFERENCE IN-LINE/OFF-LINE pour le post-processing ******* " ; set -x
+diff in_line off_line
+
+set +x ; echo "     ******* DIFFERENCE MODELE/IN-LINE/pour le modele ******* " ; set -x
+diff just_model in_line
+
+\rm *
+
+#      Launch the following job
+
+cd __mitra_home__
+[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
+echo "@@ `date`"
