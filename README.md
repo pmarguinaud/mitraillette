@@ -1,3 +1,9 @@
+
+
+![](ChatGPT_Image_29_oct._2025__21_28_08.mitr.png)
+
+
+
 ***Mitraillette***
 =======================
 MITRAILLETTE is a software designed to do some basic validations on ARPEGE, ALADIN, AROME, and
