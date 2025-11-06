@@ -2,27 +2,18 @@
 #SBATCH -p normal256
 #SBATCH -J __jobname__
 #SBATCH --nodes=__nb_nodes__
-#SBATCH --ntasks-per-node=__ntasks_by_node__
-#SBATCH --cpus-per-task=__nb_threads__
 #SBATCH --time "__job_walltime__"
 #SBATCH --exclusiv
 #SBATCH -o __jobname__.o%j
 
-#
-# Number of nodes/mpi-tasks/omp-threads:
-# -------------------------------------
-NNODES=$SLURM_JOB_NUM_NODES
-
-# Number of MPI tasks per node:
-MPITASKS_PER_NODE=$((__ntasks_tot__/__nb_nodes__))
-
-# Total number of MPI tasks:
-MPI_TASKS=$SLURM_NTASKS
-echo NNODES=$NNODES
-echo MPITASKS_PER_NODE=$MPITASKS_PER_NODE
-echo ""
-
-# Number of MPI tasks and OMP threads used in the application :
-echo MPI_TASKS=$MPI_TASKS
-echo OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+NNODE=__nb_nodes__
+NTASK=__ntasks_by_node__
+NOPMP=__nb_threads__
+if [ "__ntasks_tot__" == "__ntasks__" ]
+then
+  let "NPROC=$NNODE*$NTASK"
+else
+  NPROC=__ntasks__
+fi
+NPROC_IO=__nb_proc_io__
 

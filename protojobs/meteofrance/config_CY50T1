@@ -68,8 +68,8 @@ LFIMV="$IO_SERV_TOOLS_DIR/lfi_move -pack -force"
 
 # Batch and MPI launch definitions
 SUBMIT=/usr/bin/sbatch
-#MPILAUNCH="time /opt/softs/mpiauto/mpiauto --verbose --wrap -np __ntasks_tot__ -nnp $(( __ntasks_tot__ / __nb_nodes__ )) --"
-MPILAUNCH="time /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto --verbose --wrap -np __ntasks_tot__ -nnp $(( __ntasks_tot__ / __nb_nodes__ )) --"
+
+MPILAUNCH="time /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto --verbose --wrap --wrap-stdeo -nn $NNODE -nnp $NTASK -openmp $NOPMP --"
 
 # xpnam
 XPNAM=${GCOHOME}/public/bin/xpnam
@@ -104,7 +104,7 @@ export KMP_MONITOR_STACKSIZE=1G
 export EC_MPI_ATEXIT=0
 export EC_PROFILE_HEAP=0
 export MPIAUTOCONFIG=mpiauto.TIME.conf
-export OMP_NUM_THREADS=__nb_threads__
+
 export DR_HOOK=1
 export DR_HOOK_IGNORE_SIGNALS=-1
 export DR_HOOK_SILENT=1

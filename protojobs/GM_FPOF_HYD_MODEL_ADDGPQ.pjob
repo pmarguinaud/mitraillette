@@ -52,7 +52,7 @@ sed \
  -e "s/__MP_TYPE__/$MP_TYPE/" \
  -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
  -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+ -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
 ${CNMEXPL}.nam > namprovi
 
 \cat < namprovi
