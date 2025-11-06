@@ -93,10 +93,8 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 
 set +x
 echo ""
-echo " Get the executable file "
 echo ""
 set -x
-$CP $MYOWNBIN ARPEXE
 
 set +x
 echo ""
@@ -112,9 +110,8 @@ echo " Job running (just the model) "
 echo ""
 set -x
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
-\rm fort.4
 
 if [ -a NODE.001_01 ]
 then
@@ -140,8 +137,7 @@ echo " Job running (in-line model) "
 echo ""
 set -x
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
-\rm fort.4
+mpilaunch $MYOWNBIN
 
 if [ -a NODE.001_01 ]
 then
@@ -170,14 +166,12 @@ set -x
 \rm ICMSH${CNMEXPS}INIT
 $CP ICMSH${CNMEXPS}+0003 ICMSH${CNMEXPS}INIT
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
-\rm fort.4
+mpilaunch $MYOWNBIN
 
 if [ -a NODE.001_01 ]
 then
   mv NODE.001_01 off_line
 else
-  mv lola off_line
 fi
 
 ls -ltr
@@ -200,7 +194,6 @@ diff in_line off_line
 set +x ; echo "     ******* DIFFERENCE MODELE/IN-LINE/pour le modele ******* " ; set -x
 diff just_model in_line
 
-\rm *
 
 #      Launch the following job
 

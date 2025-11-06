@@ -81,11 +81,9 @@ $ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_cover
 
 set +x
 echo ""
-echo " Get the executable file "
 echo ""
 set -x
 
-$CP $MYOWNBIN PGDEXE
 
 set +x
 echo ""
@@ -93,14 +91,12 @@ echo " PGDEXE job running "
 echo ""
 set -x
 
-$MPILAUNCH ./PGDEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
 
 set +x
 echo ""
@@ -148,7 +144,6 @@ echo ""
 set -x
 ls -l
 
-\rm *
 
 #      Launch the following job
 

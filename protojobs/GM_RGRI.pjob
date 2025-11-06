@@ -44,10 +44,8 @@ NORTO=12    # orthogonality
 
 set +x
 echo ""
-echo " Get the executable file "
 echo ""
 set -x
-$CP $MYOWNBIN ARPEXE
 
 set +x
 echo ""
@@ -55,16 +53,14 @@ echo " Job running "
 echo ""
 set -x
 
-$MPILAUNCH ./ARPEXE -t${NSMAX} -l${NDLON} -g${NDGLG} -n${NN} -o${NORTO} $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
 ls -l
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
 
 if [ -a NODE.001_01 ]
 then
@@ -111,7 +107,6 @@ echo ""
 set -x
 ls -l
 
-\rm *
 
 #      Launch the following job
 

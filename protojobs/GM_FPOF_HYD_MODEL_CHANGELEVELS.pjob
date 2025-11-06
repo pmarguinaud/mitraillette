@@ -79,10 +79,8 @@ sed -e "s/val_sitr/300./" -e "s/val_sipr/80000./" namprovi_fc > namprovi3
 
 set +x
 echo ""
-echo " Get the executable file "
 echo ""
 set -x
-$CP $MYOWNBIN ARPEXE
 
 # -----------------------------------------------------------------------------
 # JOB NO 0: FULLPOS
@@ -126,17 +124,14 @@ echo " Job no 0 running "
 echo ""
 set -x
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
-\rm fort.4
 ls -l
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
 
 if [ -a NODE.001_01 ]
 then
@@ -153,14 +148,6 @@ fi
 
 ls -l
 
-\rm lola
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    \rm $file
-  done
-fi
 \rm ifs.stat
 \rm -f core*
 
@@ -206,17 +193,14 @@ echo " Job no ${inum} running "
 echo ""
 set -x
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
-\rm fort.4
 ls -l
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
 
 if [ -a NODE.001_01 ]
 then
@@ -233,20 +217,11 @@ fi
 
 ls -l
 
-\rm lola
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    \rm $file
-  done
-fi
 \rm ifs.stat
 \rm -f core*
 
 done # inum
 
-\rm *
 
 # -----------------------------------------------------------------------------
 

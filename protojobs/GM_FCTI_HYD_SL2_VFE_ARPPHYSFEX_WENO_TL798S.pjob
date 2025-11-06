@@ -94,10 +94,8 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 
 set +x
 echo ""
-echo " Get the executable file "
 echo ""
 set -x
-$CP $MYOWNBIN ARPEXE
 
 set +x
 echo ""
@@ -112,17 +110,14 @@ echo " Job running "
 echo ""
 set -x
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
-\rm fort.4
 ls -l
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
 
 if [ -a NODE.001_01 ]
 then
@@ -168,7 +163,6 @@ echo ""
 set -x
 ls -l
 
-\rm *
 
 #      Launch the following job
 

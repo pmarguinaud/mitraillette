@@ -127,10 +127,8 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 
 set +x
 echo ""
-echo " Get the executable file "
 echo ""
 set -x
-$CP $MYOWNBIN ARPEXE
 
 
 # Create SURFEX climatology and initial condition file with latest version
@@ -141,29 +139,25 @@ $CP arome.selnam_exseg1 EXSEG1.nam
 $XPNAM --dfile="${CNMEXPL}_CONVPGD.nam.diff" --inplace fort.4
 $XPNAM --dfile="arome_CONVPGD.selnam_exseg1.diff" --inplace EXSEG1.nam
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
 
 ls -l ICMSH${CNMEXPS}+0000.sfx ICMSH${CNMEXPS}+0000
 \mv ICMSH${CNMEXPS}+0000.sfx Const.Clim.sfx.new
 
 $XPNAM --dfile="${CNMEXPL}_CONVPREP.nam.diff" --inplace fort.4
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 \mv ICMSH${CNMEXPS}+0000.sfx ICMSH${CNMEXPS}INIT.sfx.new
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
 
 # Reset namelist; forecast up to step 432, dump restart files at step 323, output historic file at step 432
 
@@ -210,7 +204,7 @@ EOF
 
 # Run model, produce restart files at step 323
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
 # Keep interesting files
 for f in NODE.001_01 ICMSH${CNMEXPS}+????
@@ -220,16 +214,14 @@ done
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
 
 \ls -l
 
 # Restart model from step 323 up to step 432
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
 # Keep interesting files
 
@@ -240,10 +232,8 @@ done
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
 
 \ls -l
 
@@ -270,7 +260,6 @@ echo ""
 set -x
 ls -l
 
-\rm *
 
 #      Launch the following job
 

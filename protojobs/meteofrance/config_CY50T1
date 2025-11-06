@@ -69,7 +69,18 @@ LFIMV="$IO_SERV_TOOLS_DIR/lfi_move -pack -force"
 # Batch and MPI launch definitions
 SUBMIT=/usr/bin/sbatch
 
-MPILAUNCH="time /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto --verbose --wrap --wrap-stdeo -nn $NNODE -nnp $NTASK -openmp $NOPMP --"
+function mpilaunch 
+{
+  bin=$(dirname $1)
+  prefix=$(dirname $bin)
+
+  if [ -f "$prefix/mitpack.sh" ]
+  then
+    source "$prefix/mitpack.sh"
+  fi
+
+  time /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto --verbose --wrap --wrap-stdeo -nn $NNODE -nnp $NTASK -openmp $NOPMP -- $*
+}
 
 # xpnam
 XPNAM=${GCOHOME}/public/bin/xpnam
@@ -111,7 +122,7 @@ export DR_HOOK_SILENT=1
 export DR_HOOK_OPT=prof
 export MPL_MBX_SIZE=2048000000
 export LFITOOLS=$EXEC_IFSAUX_LFITOOLS
-export KMP_AFFINITY="verbose,compact,granularity=fine"
+export KMP_AFFINITY="compact,granularity=fine"
 #export KMP_AFFINITY="compact,granularity=fine"
 export KMP_BLOCKTIME=12
 export OMP_WAIT_POLICY=ACTIVE

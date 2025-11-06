@@ -57,11 +57,9 @@ ${CNMEXPL}.nam > namprovi
 
 set +x
 echo ""
-echo " Get the executable file "
 echo ""
 set -x
 
-$CP $MYOWNBIN ARPEXE
 
 set +x
 echo ""
@@ -130,19 +128,15 @@ echo ""
 set -x
 
 \mv namprovi_1 fort.4
-$MPILAUNCH ./ARPEXE $ZOPT > lola
+mpilaunch $MYOWNBIN
 codrep=$?
 
-\rm fort.4
 ls -l
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
-\rm lola
 
 if [ -a NODE.001_01 ]
 then
@@ -154,7 +148,6 @@ then
     echo ""
     set -x
     \cat $file
-    \rm $file
   done
 fi
 
@@ -196,19 +189,15 @@ echo ""
 set -x
 
 \mv namprovi_2 fort.4
-$MPILAUNCH ./ARPEXE $ZOPT > lola
+mpilaunch $MYOWNBIN
 codrep=$?
 
-\rm fort.4
 ls -l
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
-\rm lola
 
 if [ -a NODE.001_01 ]
 then
@@ -220,7 +209,6 @@ then
     echo ""
     set -x
     \cat $file
-    \rm $file
   done
 fi
 
@@ -231,7 +219,6 @@ if [ $codrep -ne 0 ] ;then
   exit
 fi
 
-\rm *_GL
 ls -l
 
 #      ***************
@@ -256,19 +243,15 @@ echo ""
 set -x
 
 \mv namprovi_3 fort.4
-$MPILAUNCH ./ARPEXE $ZOPT > lola
+mpilaunch $MYOWNBIN
 codrep=$?
 
-\rm fort.4
 ls -l
 
 set +x
 echo ""
-echo " Expand file lola"
 echo ""
 set -x
-\cat lola
-\rm lola
 
 if [ -a NODE.001_01 ]
 then
@@ -280,7 +263,6 @@ then
     echo ""
     set -x
     \cat $file
-    \rm $file
   done
 fi
 
@@ -348,19 +330,15 @@ for MM in 01 ; do
   set -x
 
   $CP namprovi_4 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
   set +x
   echo ""
-  echo " Expand file lola"
   echo ""
   set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
@@ -372,7 +350,6 @@ for MM in 01 ; do
       echo ""
       set -x
       \cat $file
-      \rm $file
     done
   fi
 
@@ -401,19 +378,15 @@ for MM in 01 ; do
   set -x
 
   $CP namprovi_5 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
   set +x
   echo ""
-  echo " Expand file lola"
   echo ""
   set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
@@ -425,7 +398,6 @@ for MM in 01 ; do
       echo ""
       set -x
       \cat $file
-      \rm $file
     done
   fi
 
@@ -462,19 +434,15 @@ for MM in 01 ; do
   set -x
 
   $CP namprovi_6 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
   set +x
   echo ""
-  echo " Expand file lola"
   echo ""
   set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
@@ -486,7 +454,6 @@ for MM in 01 ; do
       echo ""
       set -x
       \cat $file
-      \rm $file
     done
   fi
 
@@ -515,19 +482,15 @@ for MM in 01 ; do
   set -x
 
   $CP namprovi_8 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
   set +x
   echo ""
-  echo " Expand file lola"
   echo ""
   set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
@@ -539,7 +502,6 @@ for MM in 01 ; do
       echo ""
       set -x
       \cat $file
-      \rm $file
     done
   fi
 
@@ -570,19 +532,15 @@ for MM in 01 ; do
   set -x
 
   $CP namprovi_9 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
   set +x
   echo ""
-  echo " Expand file lola"
   echo ""
   set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
@@ -594,7 +552,6 @@ for MM in 01 ; do
       echo ""
       set -x
       \cat $file
-      \rm $file
     done
   fi
 
@@ -634,7 +591,6 @@ echo ""
 set -x
 ls -l
 
-\rm *
 
 #      Launch the following job
 

@@ -57,13 +57,11 @@ fic_ref_fa=${WORKDIR}/${domain}_m${imm}
 
 set +x
 echo ""
-echo " Get the executable file "
 echo ""
 set -x
 
 $CP $EXEC_IFSAUX_LFITOOLS PGDCONV
 
-$CP $MYOWNBIN PGDEXE
 
 set +x
 echo ""
@@ -84,7 +82,7 @@ set -x
 # Converting lfi to fa by adding articles in the empty fa file
 PGDEXE sfxlfi2fa --sfx-fa--file ${file_fa}.fa --sfx-lfi-file ${dir_file_lfi}/${file_lfi}
 
-$MPILAUNCH ./PGDEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
 set +x
 echo ""
@@ -149,7 +147,6 @@ echo ""
 set -x
 ls -l
 
-\rm *
 
 #      Launch the following job
 
