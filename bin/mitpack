@@ -1,0 +1,1131 @@
+#!/usr/bin/perl -w
+
+
+=head1 NAME
+
+mitpack
+
+=head1 SYNOPSIS
+
+  $ cd pack
+  $ cd 49t1_tot2nvmassweno.03.IMPIIFC2018.x
+  $ mitpack                                    #  Create a new MITRAILLETTE test case and run it
+  $ mitpack --reuse                            #  Rerun last test case
+  $ mitpack --dryrun                           #  Create last test case, but do not run tasks
+  $ mitpack --status                           #  Show a small report on all tasks
+  $ mitpack --status --reference /path/to/ref  #  Show a small report on all tasks, compare with a reference
+  $ mitpack --cancel                           #  Cancel already submitted tasks
+
+=head1 DESCRIPTION
+
+Run MITRAILLETTE test suite from within a pack.
+
+=head1 DETAILS
+
+This script will : 
+
+=over 4
+
+=item 
+
+Create the MITRAILLETTE test case; create a PRO_FILE, run mitraille.x, and remove dependencies
+between individual tasks.
+
+=item
+
+Start the MITRAILLETTE test case (all tasks at once).
+
+=back
+
+Once the MITRAILLETTE tasks have ended, mitpack will provide a short report for each
+of the tasks.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --dryrun
+
+Create the test case, but do not start any task.
+
+=item --reuse
+
+Reuse the last test case.
+
+=item --version
+
+Provide MITRAILLETTE test version.
+
+=item --status
+
+Show the status for last test case.
+
+=item --cancel
+
+Cancel tasks (with scancel) for last test case.
+
+=item --reference
+
+Provide a reference for comparison; this may be the path of a MITRAILLETTE test case
+of the path of a pack which will be searched for MITRAILLETTE test cases.
+
+=back
+
+=head1 CONFIGURATION & REQUIREMENTS
+
+You need to install MITRAILLETTE in ~/mitraille. You also need to provide a 
+PRO_FILE.version with the list of test you want to run for the version of tests.
+
+=head1 CAVEATS
+
+All tasks are submitted simultaneously. You may hit a limit on the number of jobs allowed
+by the scheduler.
+
+=head1 SEE ALSO
+
+C<gmkpack>, C<mitraillette>
+
+=head1 AUTHOR
+
+pmarguinaud@hotmail.com
+
+=cut
+
+package aggregate;
+
+use strict;
+
+use FileHandle;
+use Data::Dumper;
+use Storable;
+
+use strict;
+
+sub slurpl
+{
+  my $f = shift;
+  my @x = do { my $fh = 'FileHandle'->new ("<$f"); <$fh> };
+  chomp for (@x);
+  return @x;
+}
+
+sub header
+{
+  my $f = shift;
+
+  my @sbatch = grep { s/^#SBATCH\s+//o } &slurpl ($f);
+
+  my %h;
+
+  for (@sbatch)
+    {
+      s/\s*$//o;
+      next if (m/^--job-name=/o);
+
+      if (m/^(--\S+)=(.*)$/o)
+        {
+          $h{$1} = $2;
+        }
+      elsif (m/^(--?\S+)\s+(\S.*)$/o)
+        {
+          $h{$1} = $2;
+        }
+      elsif (m/^(-\S+)$/o)
+        {
+          $h{$1} = 1;
+        }
+    }  
+
+  for (values (%h))
+    {
+      s/^"//o;
+      s/"$//o;
+    }
+
+  return \%h;
+}
+
+sub aggregate
+{
+  my $max = shift; # Max time in minutes
+  my @cjob = @_;
+
+  return @cjob unless ($max > 0);
+
+  local $Storable::canonical = 1;
+  
+  my (%j, %h);
+  
+  for my $f (@cjob)
+    {
+      my $h = &header ($f);
+  
+      my $time = delete $h->{'--time'};
+      my $o = delete $h->{'-o'};
+  
+      my $sign = &Storable::freeze ($h);
+
+      push @{ $j{$sign} }, {file => $f, time => $time, output => $o};
+      $h{$sign} = $h;
+    }
+
+  my @sh;
+  
+  my $count = 0;
+
+  for my $sign (sort { $h{$b}{'--nodes'} <=> $h{$a}{'--nodes'} } keys (%j))
+    {
+      my $h = $h{$sign};
+  
+      my $time = 0;
+  
+      my @job;
+
+      my $dump = sub
+      {
+        return unless (@job);
+
+        push @sh, (my $sh = sprintf ('mit.%6.6d.sh', $count++));
+
+        my $fh = 'FileHandle'->new (">$sh");
+        
+        $fh->print ("#!/bin/bash\n");
+
+        for my $attr (sort keys (%$h))
+          {
+            $fh->print ("#SBATCH $attr $h->{$attr}\n");
+          }
+        $fh->print ("#SBATCH --time $time\n");
+        $fh->print ("#SBATCH -o /dev/null\n");
+  
+        $fh->print ("\n" x 2);
+  
+        for my $job (@job)
+          {
+            chmod (0755, $job->{file});
+            (my $output = $job->{output}) =~ s/%j/\$SLURM_JOBID/o;
+            $fh->print ("sleep 2; STARTTIME=\$(date +%Y-%m-%dT%H:%M:%S) ./$job->{file} > $output 2>&1\n\n");
+          }
+  
+        $fh->close ();
+  
+        $time = 0; 
+        @job = ();
+      };
+  
+      for my $job (@{ $j{$sign} })
+        {
+          $time += $job->{'time'};
+  
+          if ($time > $max)
+            {
+              $dump->();
+            }
+          else
+            {
+              push @job, $job;
+            }
+        }
+
+      $dump->();
+  
+    }
+
+  return @sh;
+}
+
+package build;
+
+use strict;
+use Cwd;
+
+sub new
+{
+  my $class = shift;
+  my %args = @_;
+
+  $args{path} ||= &cwd ();
+
+  if ($class eq __PACKAGE__)
+    {
+      if (-f "$args{path}/.genesis")
+        {
+          $class = 'build::pack';
+        }
+      elsif (-f "$args{path}/build/install_manifest.txt")
+        {
+          $class = 'build::cmake';
+        }
+      else
+        {
+          return;
+        }
+    }
+  else
+    {
+      return bless \%args, $class;
+    }
+  
+  return $class->new (%args);
+}
+
+sub getPath
+{
+  my $self = shift;
+  return $self->{path};
+}
+
+package build::pack;
+
+use File::Basename;
+
+use strict;
+
+our @ISA = qw (build);
+
+sub getExecutablePath
+{
+  my ($self, $exec) = @_;
+  return "$self->{path}/bin/$exec";
+}
+
+sub getLabel 
+{
+  my $self = shift;
+  return &basename ($self->{path});
+}
+
+sub slurp
+{
+  my $f = shift;
+  (my $fh = 'FileHandle'->new ("<$f")) or die ("Cannot open `$f'");
+  local $/ =  undef; 
+  my $text = <$fh>;
+  return $text;
+}
+
+sub getGenesis
+{
+  my $self = shift;
+  die unless (-f "$self->{path}/.genesis");
+  chomp (my $genesis = &slurp ("$self->{path}/.genesis"));
+  my @genesis = split (m/\s+/o, $genesis);
+  return @genesis;
+}
+
+sub getCycle
+{
+  my $self = shift;
+  my @genesis = $self->getGenesis ();
+  for my $i (0 .. $#genesis)
+    {
+      return $genesis[$i+1] if ($genesis[$i] eq '-r');
+    }
+}
+
+sub getVersion
+{
+  my $self = shift;
+  my $cycle = $self->getCycle ();
+
+  my %cycle2version =
+  (
+    '49t1' => 'CY49T1',
+    '50'   => 'CY50',
+  );
+
+  return $cycle2version{$cycle};
+}
+
+sub getInstallPath
+{
+  my $self = shift;
+  return $self->{path};
+}
+
+package build::cmake;
+
+use File::Basename;
+use Data::Dumper;
+
+use strict;
+
+our @ISA = qw (build);
+
+sub getExecutablePath
+{
+  my ($self, $exec) = @_;
+
+  if ($self->{executablePath}{$exec})
+    {
+      return $self->{executablePath}{$exec};
+    }
+
+  my @install = do { my $fh = 'FileHandle'->new ("<$self->{path}/build/install_manifest.txt"); <$fh> };
+  chomp for (@install);
+
+  for my $path (@install)
+    {
+      if ($exec eq &basename ($path))
+        {
+          $self->{executablePath}{$exec} = $path;
+          return $path;
+        }
+    }
+
+  die ("Executable $exec was not found in $self->{path}");
+}
+
+sub getInstallPath
+{
+  my $self = shift;
+  my $path = $self->getExecutablePath ('MASTERODB');
+
+  for (1 .. 2)
+    {
+      $path = &dirname ($path);
+    }
+ 
+  return $path;
+}
+
+sub getLabel
+{
+  my $self = shift;
+
+  my @cmd = ('git', -C => $self->{path}, qw (branch --show-current));
+
+  my $branch = `@cmd`;
+
+  die ("Command `@cmd' failed") if ($?);
+
+  return $branch;
+}
+
+sub getVersion
+{
+  my $self = shift;
+  return undef;
+}
+
+package node;
+
+use strict;
+use FileHandle;
+
+my @spnorms = ("VORTICITY", "DIVERGENCE", "TEMPERATURE", "KINETIC ENERGY");
+
+sub xave
+{
+  my $f = shift;
+  my $fh = 'FileHandle'->new ("<$f");
+
+  $fh or die ("Cannot open $f\n");
+
+  my @gpregs;
+
+
+  my @line = <$fh>;
+  my @x;
+  MAIN: while (defined (my $line = shift (@line)))
+    {
+      AGAIN:
+
+#  GPNORMS OF FIELDS TO BE WRITTEN OUT ON FILE :
+#                                    AVERAGE               MINIMUM               MAXIMUM
+#  PROFTEMPERATURE  : 0.291195674511515E+03 0.201887381812149E+03 0.315847778487033E+03
+
+      if ($line =~ s/^\s*SPECTRAL\s+NORMS\s+-\s+//o)
+        {
+          AGAIN_SPNORMS:
+
+
+          goto AGAIN
+            unless (($line = shift (@line)) =~ s/^\s+LEV\s+//o);
+
+          my %index;
+          %index = ();
+          for my $spnorm (@spnorms)
+            {
+              my $index = index ($line, $spnorm);
+              $index{$spnorm} = $index 
+                if ($index >= 0);
+            }
+
+          my @spnormk = sort { $index{$a} <=> $index{$b} } 
+                        grep { defined $index{$_} } 
+                        @spnorms;
+
+          goto AGAIN
+            unless (($line = shift (@line)) =~ s/^\s+AVE\s+//o);
+
+          my @spnormv = split (m/\s+/o, $line);
+
+          while (@spnormk)
+            {
+              my $spnormk = shift (@spnormk);
+              my $spnormv = shift (@spnormv);
+              die ("$spnormk, $spnormv\n")
+                unless (defined ($spnormk) && defined ($spnormv));
+              push @x, [ $spnormk, $spnormv ];
+            }
+
+          goto AGAIN_SPNORMS;
+
+        }
+    }
+
+  return @x;
+}
+
+
+sub diff
+{
+  my ($f1, $f2, $fh) = @_;
+  
+  my @fx1 = &xave ($f1);
+  my @fx2 = &xave ($f2);
+  
+  my @x = ([]);
+  
+  my $diff = 0;
+  
+  while (defined (my $fx1 = shift (@fx1)) && defined (my $fx2 = shift (@fx2)))
+    {
+      my ($f1, $x1) = @$fx1;
+      my ($f2, $x2) = @$fx2;
+  
+      die ("Field mismatch $f1 != $f2\n")
+        unless ($f1 eq $f2);
+  
+      chomp ($x1); chomp ($x2);
+      if (($x1 !~ m/^\s*$/o) && ($x2 !~ m/^\s*$/o))
+        {
+          for ($x1, $x2)
+            {
+              s/(\d)([+-]\d+)$/$1E$2/o;
+            }
+          my $dx = $x1 - $x2;
+  
+          my $sdx = sprintf ('%17.9e', $dx);
+  
+          $dx = $sdx; $dx = $dx + 0.;
+  
+          push @{$x[-1]},
+            sprintf (" | %-20s | %17.9e  |  %17.9e  |  %17s  | \n", $f1, $x1, $x2, $sdx);
+  
+          $diff++ if ($dx);
+  
+        }
+      else
+        {
+          push @x, [];
+        }
+    }
+  
+  for (my $i = 0; $i <= $#x; $i++)
+    {
+      last unless (@{$x[$i]});
+      $fh && $fh->print (@{$x[$i]});
+    }
+
+  return $diff;
+}
+
+
+package main;
+
+use strict;
+use Cwd;
+use FileHandle;
+use File::Path;
+use File::Spec;
+use File::Basename;
+use Data::Dumper;
+use Getopt::Long;
+use Term::ANSIColor;
+use File::stat;
+use FindBin qw ($Bin);
+use lib "$Bin/lib";
+use bt;
+
+my $HOME = (getpwuid ($>))[7];
+
+sub center
+{
+  my ($s, $n) = @_; 
+  my $i = 0;
+  while (length ($s) < $n) 
+    {   
+      $s = $i % 2 ? " $s" : "$s ";
+      $i++;
+    }   
+  return $s; 
+}
+
+my $MITRAILLE = "$HOME/mitraille";
+
+sub runCommand
+{
+  my %args = @_;
+  my @cmd = @{ ${args}{command} };
+
+  print "@cmd\n" if ($args{verbose});
+
+  if ($args{stdout})
+    {
+      my $out = `@cmd`;
+      my $c = $?;
+      $c && goto ERROR;
+      return $out;
+    }
+  else
+    {
+      system (@cmd) 
+        and goto ERROR;
+    }
+
+  return;
+
+ERROR:
+  die ("Command `@cmd' failed\n");
+}
+
+sub runMitrailleCommand
+{
+  my %args = @_;
+  my @cmd = @{ ${args}{command} };
+
+  print "@cmd\n" if ($args{verbose});
+
+  my $profile = "$HOME/.mitraille_profile";
+
+  die ("`$profile' was not found\n") unless (-f $profile);
+
+  system ("set -e; source $profile; @cmd")
+    and die ("Command `@cmd' failed\n");
+}
+
+sub swapLink
+{
+  my $f = shift;
+  return unless (-l $f);
+
+  $f = 'File::Spec'->rel2abs ($f);
+
+  my $g = readlink ($f);
+
+  my $stf = stat (&dirname ($f));
+  my $stg = stat (&dirname ($g));
+
+  return unless ($stf->dev == $stg->dev);
+
+  unlink ($f);
+  rename ($g, $f);
+  symlink ($f, $g);
+}
+
+sub generateProFile
+{
+  my %args = @_;
+  my $build = $args{build};
+
+  my $MASTERODB = $build->getExecutablePath ('MASTERODB');
+
+  my $p = $build->getLabel ();
+
+  my @list = do 
+  { 
+    my $pro_file = "$MITRAILLE/PRO_FILE.$args{version}";
+    my $fh = 'FileHandle'->new ("<$pro_file"); 
+    $fh or die ("Cannot open `$pro_file'");
+    <$fh>
+  };
+
+  for (@list)   
+    {
+      s/(?:^\s*|\s*)$//go;
+    }
+
+  @list = grep { (! m/^\s*$/o) && (! m/^#/o) } @list;
+
+  my $pro_file = "$MITRAILLE/PRO_FILE.$p";
+
+  my $fh = 'FileHandle'->new (">$pro_file");
+
+  for my $job (@list)
+    {
+      next unless ($job =~ m/^(?:L3_|GM_|IFS_)/o);
+      $fh->printf ("%-80s %s\n", $job, $MASTERODB);
+    }
+
+  $fh->close ();
+
+  return $pro_file;
+}
+
+sub createMitrailletteTestCase
+{
+  my %args = @_;
+
+  my $build = $args{build};
+
+  my $pro_file = &generateProFile (build => $build, %args);
+
+  chdir ($MITRAILLE);
+  
+  my $dir = lc ($args{version});
+  
+  &mkpath ($dir) unless (-d $dir);
+  
+  my @test0 = map { &basename ($_) } <$dir/*>;
+  my %test0 = map { ($_, 1) } @test0;
+  
+  &runMitrailleCommand (command => ['./mitraillette.x', $args{version}, &basename ($pro_file)], %args);
+  
+  my @test1 = map { &basename ($_) } <$dir/*>;
+  my ($mitraillette) = grep { ! $test0{$_} } @test1;
+  
+  $mitraillette = "$MITRAILLE/$dir/$mitraillette";
+  
+  unlink ($_) for (<$mitraillette/chainjob*>);
+  unlink ($_) for (<job_end.x*>, <test.x*>, <log_file_*>, <rank_last.x*>, <mitraillette.o*>, <rank_file.x*>);
+  
+  my @cjob = sort <$mitraillette/*.cjob>;
+
+  for my $cjob (@cjob)
+    {
+      &patchCJob (cjob => $cjob, build => $build);
+    }
+
+  'FileHandle'->new (">$mitraillette/VERSION")->print ("$args{version}\n");
+
+  return $mitraillette;
+}
+
+sub patchCJob
+{
+  my %args = @_;
+
+  my ($build, $cjob) = @args{qw (build cjob)};
+  
+  my $install = $build->getInstallPath ();
+
+  my @text = do { my $fh = 'FileHandle'->new ("<$cjob"); <$fh> };
+
+  for (@text)
+    {
+     if (/test\.x\d+/o)
+       {
+         $_ = "\n";
+       }
+    }
+
+  'FileHandle'->new (">$cjob")->print (join ('', @text));
+}
+
+sub submitJob
+{
+  my %args = @_;
+  my $job = $args{job};
+  my $out = &runCommand (%args, stdout => 1, command => ['sbatch', $job]);
+  my ($id) = ($out =~ m/Submitted batch job (\d+)/o);
+  'FileHandle'->new (">$job.id")->print ("$id\n");
+  return $id;
+}
+
+sub slurp
+{
+  my $f = shift;
+  (my $fh = 'FileHandle'->new ("<$f")) or die ("Cannot open `$f'");
+  local $/ =  undef; 
+  my $text = <$fh>;
+  return $text;
+}
+
+sub cancelJob
+{
+  my %args = @_;
+  my $job = $args{job};
+  return unless (-f "$job.id");
+  chomp (my $id = &slurp ("$job.id")); 
+  &runCommand (%args, command => ['scancel', $id]);
+  unlink ("$job.id");
+  return $id;
+}
+
+sub cancelMitraillette
+{
+  my %args = @_;
+
+  my $mitraillette = $args{mitraillette};
+
+  chdir ($mitraillette);
+
+  for my $jobid (<*.id>)
+    {
+      (my $job = $jobid) =~ s/\.id$//o;
+      &cancelJob (%args, job => $job);
+    }
+
+}
+
+sub runMitrailletteTestCase
+{
+  my %args = @_;
+
+  my $mitraillette = $args{mitraillette};
+
+  chdir ($mitraillette);
+
+  &mkpath ('old');
+
+  if (my @o = <*.o*>)
+    {
+      rename ($_, "old/$_") for (@o);
+    }
+
+  my @cjob = grep 
+  {
+    my $cjob = $_;
+    my $ok = 1;
+    if (my @filter = @{ $args{filter} })
+      {
+        $ok = 0;
+        for (@filter)
+          {
+            $ok ||= ($cjob =~ m/$_/);
+          }
+      }
+    $ok
+  } <*.cjob>;
+
+
+  my @sh = &aggregate::aggregate ($args{maxtime}, @cjob);
+
+  for my $sh (@sh)
+    {
+      &submitJob (%args, job => $sh);
+    }
+
+}
+
+sub jobInfo
+{
+  my $o = shift;
+
+  my $text = &slurp ($o);
+
+  my $ABORTED = << 'EOF';
+
+#########################################
+#        BULL - METEO-FRANCE            #
+#        Job Accounting                 #
+#########################################
+EOF
+
+  if (substr ($text, 0, length ($ABORTED)) eq $ABORTED)
+    {
+      unlink ($o);
+      return;
+    }
+
+  my ($CNMEXPL) = ($text =~ m/CNMEXPL=(\w+)/goms);
+  $CNMEXPL or die ($o);
+
+  my ($status) = ($text =~ m/(Command exited with non-zero status|Process received signal|mpirun detected that one or more processes exited with non-zero status|ABOR1|ABORT!|FAILED|SIGSEGV|CANCELLED|forrtl: severe|BAD TERMINATION|SPECTRAL NORMS[^\n]*NaN|Cannot access ..\/(?:MASTERODB|ARPEXE).)/goms);
+
+  $status =~ s/^forrtl:.*SIGSEGV/SIGSEGV/o if ($status);
+  $status = 'NaN' if ($status && ($status =~ m/NaN/o));
+  $status = 'Missing' if ($status && ($status =~ m/Cannot access/o));
+  $status = 'non-zero status' if ($status && ($status =~ m/^mpirun detected/o));
+  $status = 'non-zero status' if ($status && ($status =~ m/^Command exited with non-zero status/o));
+  $status = 'signalled' if ($status && ($status =~ m/^Process received signal/o));
+  
+
+  $status = substr ($status, 0, 20) if ($status);
+
+  unless ($status)
+    {
+      ($status) = ($text =~ m/(COMPLETED)/goms);
+    }
+
+  $status ||= 'UNKNOWN';
+
+  if ($status eq 'UNKNOWN')
+    {
+      if ($text =~ m/sacct -j/o)
+        {
+#         $status = 'COMPLETE';
+        }
+    }
+
+  return {status => $status, CNMEXPL => $CNMEXPL};
+}
+
+sub colorStatus
+{
+  my $text = shift;
+  (my $status = $text) =~ s/(?:^\s*|\s*$)//go;
+
+  my %color = 
+  (
+    FAILED            => 'black on_red',
+    ABOR1             => 'black on_red',
+    COMPLETED         => 'green',
+    'forrtl: severe'  => 'black on_red',
+    SIGSEGV           => 'black on_red',
+    UNKNOWN           => 'yellow',
+    CANCELLED         => 'black on_red',
+    'BAD TERMINATION' => 'black on_red',
+    NaN               => 'black on_red',
+    Missing           => 'black on_red',
+    'non-zero status' => 'black on_red',
+    'ABORT!'          => 'black on_red',
+    signalled         => 'black on_red',
+  );
+
+  if ((-t STDOUT) && (my $color = $color{$status}))
+    {
+      return &colored ([$color], $text);
+    }
+  else
+    {
+      return $text;
+    }
+}
+
+sub listTestCases
+{
+  my %args = @_;
+
+  (my $build = $args{build}) or die;
+
+  my $mitraillette = $args{mitraillette};
+
+  $mitraillette or die;
+  chdir ($mitraillette) or die;
+
+  for my $cjob (<*.cjob>)
+    {
+      print &basename ($cjob, qw (.cjob)), "\n";
+    }
+
+}
+
+sub showStatus
+{
+  my %args = @_;
+
+  (my $build = $args{build}) or die;
+
+  my ($mitraillette, $reference) = @args{qw (mitraillette reference)};
+
+  my ($build1, $mitraillette1);
+
+  if ($reference)
+    {
+      if ($build1 = 'build'->new (path => $reference))
+        {
+          ($mitraillette1) = &getLastMitraillette (build => $reference);
+          $mitraillette1 or die;
+        }
+      elsif (my ($cjob) = <$reference/*.cjob>)
+        {
+          $mitraillette1 = $reference;
+          my ($text) = &slurp ($cjob);
+         
+          $build1 = 'build'->new (path => "$reference/..");
+
+        }
+      else
+        {
+          die;
+        }
+    }
+
+  $mitraillette or die;
+  chdir ($mitraillette) or die;
+
+  my %o1 = $mitraillette1 ? map 
+  { 
+    my $o = $_;  
+    $_ = &basename ($_);
+    s/\.o\d+$//o;
+    ($_, $o) 
+  } <$mitraillette1/*.o*> : ();
+
+  my ($log, $fhlog);
+
+  if ($build1)
+    {
+      $log = $build->getPath () . '/diff.' . &basename ($mitraillette) . '-' . &basename ($mitraillette1) . ".txt";
+      $fhlog = 'FileHandle'->new (">$log");
+    }
+  
+  my $len = 0;
+  for my $o (sort <*.o*>)
+    {
+      $len = length ($o) > $len ? length ($o) : $len;
+    }
+
+  printf ("RUN = %s\n", $mitraillette);
+  printf ("REF = %s\n", $mitraillette1) if ($mitraillette1);
+
+  printf ("| %-${len}s | %20s", '',  &center ('RUN', 20));
+  printf (" | %20s | %s", &center ('REF', 20), '') if ($mitraillette1);
+  print "\n";
+
+  my @o = sort <*.o*>;
+
+  MAIN : for my $i (0 .. $#o)
+    {
+      my $o = $o[$i];
+
+      my $edit = 0;
+
+      next unless (my $info = &jobInfo ($o));
+
+      my $line = sprintf ("| %-${len}s | %20s", $info->{CNMEXPL}, &colorStatus (&center ($info->{status}, 20)));
+
+      my $o1;
+
+      if ($mitraillette1)
+        {
+          (my $O = $o) =~ s/\.o\d+$//o;
+          $o1 = $o1{$O};
+
+          if ($o1)
+            {
+              my $info1 = &jobInfo ($o1);
+
+              if ($args{'only-completed'})
+                {
+                  next unless ($info1->{status} eq 'COMPLETED');
+                }
+             
+              $fhlog && $fhlog->print ("$info->{CNMEXPL}\n\n");
+
+              my $diff = &node::diff ($o, $o1, $fhlog);
+
+              $line .= sprintf (" | %20s | %s", &colorStatus (&center ($info1->{status}, 20)), (! &statusEquiv ($info->{status}, $info1->{status})) || $diff ? 'DIFF' : '');
+
+              $edit = $diff || ($info->{status} ne $info1->{status});
+
+              $fhlog && $fhlog->print ("\n\n");
+            }
+        }
+
+      $line .= "\n";
+
+      if ($i % 5 == 0)
+        {
+          $line =~ s/ /./go;
+        }
+
+      print $line;
+
+      if ($args{'status-edit-diff'} && $o1 && $edit)
+        {
+          system ('vim', '-d', $o, $o1);
+        }
+
+
+    }
+
+}
+
+sub statusEquiv
+{
+  my ($status1, $status2) = @_;
+  return (($status1 eq 'COMPLETED') == ($status2 eq 'COMPLETED')) || ($status1 eq 'UNKNOWN') || ($status2 eq 'UNKNOWN');
+}
+
+sub getLastMitraillette
+{
+  my %args = @_;
+
+  (my $build = $args{build}) or die;
+
+  my @mitraillette = sort grep { -d && m/mitraille_\d\d\d\d$/o } <mitraille_????>;
+
+  return pop (@mitraillette);
+}
+
+my $build = 'build'->new ();
+$build or die ("mitpack should be called either from a pack or from a cmake build");
+
+my %opts = (version => $build->getVersion (), filter => '', maxtime => 0);
+my @opts_f = qw (verbose help reuse dryrun status status-edit-diff cancel list only-completed);
+my @opts_s = qw (version reference filter maxtime);
+
+sub help
+{
+  print "Usage: " . &basename ($0) . "\n" 
+      . " Options:\n" . join ('', map { "   --$_\n" } @opts_f, @opts_s);
+}
+
+if (-f '.mitpack.conf')
+  {
+    unshift (@ARGV, @{ do './.mitpack.conf' });
+  }
+
+&GetOptions
+(
+  (map { ($_, \$opts{$_}) } @opts_f),
+  (map { ("$_=s", \$opts{$_}) } @opts_s),
+);
+
+if ($opts{help})
+  {
+    &help (); 
+    exit (0);
+  }
+
+my $mitraillette;
+
+$opts{reuse} ||= $opts{status};
+$opts{reuse} ||= $opts{cancel};
+$opts{reuse} ||= $opts{list};
+
+$opts{reference} = 'File::Spec'->rel2abs ($opts{reference})
+  if ($opts{reference});
+
+$opts{filter} = [split (m/,/o, $opts{filter})];
+
+
+if ($opts{reuse})
+  {
+    $mitraillette = &getLastMitraillette (build => $build);
+    die ("Could not found last mitraillette directory\n")
+      unless ($mitraillette);
+  }
+else
+  {
+    die ("No version of tests was found\n") 
+      unless ($opts{version});
+    $mitraillette = &createMitrailletteTestCase (build => $build, %opts);
+    my $local = $build->getPath () . '/' . &basename ($mitraillette);
+    symlink ($mitraillette, $local);
+    &swapLink ($local);
+  }
+
+if ($opts{list})
+  {
+    &listTestCases (mitraillette => $mitraillette, build => $build, %opts);
+  }
+elsif ($opts{status})
+  {
+    &showStatus (mitraillette => $mitraillette, build => $build, %opts);
+  }
+elsif ($opts{cancel})
+  {
+    &cancelMitraillette (mitraillette => $mitraillette, %opts);
+  }
+elsif (! $opts{dryrun})
+  {
+    &runMitrailletteTestCase (mitraillette => $mitraillette, %opts);
+  }
+
+
+
