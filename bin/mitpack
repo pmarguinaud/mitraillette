@@ -92,6 +92,26 @@ pmarguinaud@hotmail.com
 
 =cut
 
+package bt;
+
+use strict;
+
+sub bt
+{ 
+  print @_;
+
+  print "\n";
+  for (my $i = 0; ; $i++)
+    {
+      last unless (my @call = caller ($i));
+      print " $i ", $call[1], ':', $call[2], "\n";
+    }
+  die "\n";
+}
+
+$SIG{__WARN__} = \&bt;
+$SIG{__DIE__} = \&bt;
+
 package aggregate;
 
 use strict;
@@ -544,9 +564,6 @@ use Data::Dumper;
 use Getopt::Long;
 use Term::ANSIColor;
 use File::stat;
-use FindBin qw ($Bin);
-use lib "$Bin";
-use bt;
 
 my $HOME = (getpwuid ($>))[7];
 
