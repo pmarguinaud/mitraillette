@@ -1,0 +1,4 @@
+export MIT_INSTALL_DIR=${HOME}/mitraille
+export WORKDIR=$workdir
+export STATION=ecmwf 
+
