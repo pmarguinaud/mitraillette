@@ -95,7 +95,7 @@ echo ""
 echo ""
 set -x
 
-grib_api_prefix=$(ldd ARPEXE  | perl -ne ' 
+grib_api_prefix=$(ldd $MYOWNBIN  | perl -ne ' 
  next unless (m/libeccodes_f90/o); 
  my ($path) = (m/=>\s+(\S+)/o); 
  use File::Basename; 

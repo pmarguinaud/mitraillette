@@ -388,7 +388,6 @@
    NWRTOUT=4,
    NFLDIN=0,
    NSTRIN=1,
-   LSLONDEM_SPLIT=.TRUE.,
  /
  &NAMPARAR
  /
