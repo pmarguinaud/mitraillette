@@ -429,9 +429,9 @@ sub getLabel
 
   my $branch = `@cmd`;
 
-  die ("Command `@cmd' failed") if ($?);
+  return $branch unless ($?);
 
-  return $branch;
+  return &basename ($self->{path});
 }
 
 sub getVersion

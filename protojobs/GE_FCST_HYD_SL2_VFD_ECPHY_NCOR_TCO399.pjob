@@ -102,7 +102,7 @@ grib_api_prefix=$(ldd $MYOWNBIN  | perl -ne '
  use File::Basename; 
  print &dirname (&dirname ($path)), "\n" ')
 
-export ECCODES_SAMPLES_PATH=$grib_api_prefix/share/eccodes/ifs_samples/grib1_mlgrib2/
+export ECCODES_SAMPLES_PATH=$grib_api_prefix/share/eccodes/ifs_samples/grib1_mlgrib2:/MEMFS/ifs_samples/grib1_mlgrib2
 
 set +x
 echo ""

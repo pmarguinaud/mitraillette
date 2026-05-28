@@ -39,7 +39,7 @@ eccodes=$(ldd $MYOWNBIN | grep eccodes_f90 | sed -re 's:^.+ (/.+)/lib(64)?/.+:\1
 if [ -n "$eccodes" ]
 then
         echo "Set GRIB_API samples"
-        export ECCODES_SAMPLES_PATH=$eccodes/share/eccodes/ifs_samples/grib1_mlgrib2
+        export ECCODES_SAMPLES_PATH=$eccodes/share/eccodes/ifs_samples/grib1_mlgrib2:/MEMFS/ifs_samples/grib1_mlgrib2
 fi
 
 #       **********************************
