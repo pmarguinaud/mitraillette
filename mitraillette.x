@@ -302,6 +302,7 @@ COMMENT=$3
       s/__mitra_pid__/${MITRA_PID}/go;  
       s/__mitra_home__/${mitra_home}/go; 
       s/__mit_unchained_job__/${MIT_UNCHAINED_JOB}/go; 
+      s/__mit_install_dir__/\$ENV{MIT_INSTALL_DIR}/go; 
   " ${JOB_DIR}/${CODE_NAME}.cjob
 
   ln -s ${JOB_DIR}/${CODE_NAME}.cjob ${JOB_DIR}/chainjob_$seqn

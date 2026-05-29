@@ -6,7 +6,7 @@
 MIT_UNCHAINED_JOB="__mit_unchained_job__"
 
 # where the io_serv tools are
-IO_SERV_TOOLS_DIR=$MIT_INSTALL_DIR/io_serv_tools
+IO_SERV_TOOLS_DIR=__mit_install_dir__/io_serv_tools
 
 # Where to store the output files
 WORKDIR=/scratch/work/${USER}
