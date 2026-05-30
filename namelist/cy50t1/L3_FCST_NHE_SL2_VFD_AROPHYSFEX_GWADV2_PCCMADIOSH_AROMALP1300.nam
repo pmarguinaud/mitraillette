@@ -242,7 +242,7 @@
    NDHFDTS(30)=-29,
    NDHFDTS(31)=-30,
    LAROME=.TRUE.,
-   CNPPATH='.',
+   CNPPATH="./",
    LGRIB_API=.FALSE.,
    LALLOPR=.FALSE.,
  /

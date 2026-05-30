@@ -96,6 +96,8 @@ function mpilaunch
     source "$prefix/mitpack.sh"
   fi
 
+  ls -d ./* > dirlst
+
   time /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto --verbose --wrap --wrap-stdeo -nn $NNODE -nnp $NTASK -openmp $NOPMP -- $*
 }
 

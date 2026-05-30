@@ -79,9 +79,9 @@ function mpilaunch
     source "$prefix/mitpack.sh"
   fi
 
-#  time /home/sor/install/mpiauto/mpiauto --verbose --wrap-stdeo --wrap -np $MPI_TASKS -nnp $MPITASKS_PER_NODE --
-  time /home/sor/install/mpiauto/mpiauto --verbose --wrap-stdeo --wrap --nn $NNODE -nnp $NTASK -openmp $NOPMP -- $*
+  ls -d ./* > dirlst
 
+  time /home/sor/install/mpiauto/mpiauto --verbose --wrap-stdeo --wrap --nn $NNODE -nnp $NTASK -openmp $NOPMP -- $*
 }
 
 # xpnam
