@@ -2,18 +2,15 @@ package MITRAILLE;
 
 use strict;
 
-use Cwd qw(cwd);
+use Cwd qw (cwd);
 use File::Basename;
 use File::Spec;
 use FileHandle;
+use Data::Dumper;
 
 use base qw (Exporter);
 
 our @EXPORT_OK = qw (run);
-
-#---------------------------------------------------------------------------------------------------------
-# Helper functions
-#---------------------------------------------------------------------------------------------------------
 
 sub read_file
 {
@@ -46,16 +43,29 @@ sub getprofil
   my $job_name = $args{job_name};
   $job_name =~ s/\.pjob$//o;
   my $profil_table = $args{profil_table};
-  if (exists $profil_table->{$job_name})
+
+  my @h = @{ $profil_table->{header} };
+
+  my @c;
+
+  if (exists ($profil_table->{$job_name}))
     {
-      return @{ $profil_table->{$job_name} };
+      @c = @{ $profil_table->{$job_name} };
     }
   # Fallback: use endjob profile or defaults
-  if (exists $profil_table->{"endjob"})
+  elsif (exists ($profil_table->{"endjob"}))
     {
-      return @{ $profil_table->{"endjob"} };
+      @c = @{ $profil_table->{"endjob"} };
     }
-  return (10, 0, 1, 1, 128);
+  else
+    {
+die;
+      @c = (10, 0, 1, 1, 128);
+    }
+
+  my %p = map { ($h[$_], $c[$_]) } (0 .. $#h);
+
+  return \%p;
 }
 
 sub set_job
@@ -67,45 +77,42 @@ sub set_job
   my $build = $args{build} // '';
 
   my $JOB = &getjob (%args);
-  my ($job_walltime, $job_nproc_io, $job_ntasks_tot, $job_nnode, $job_nthreads) = &getprofil (%args);
+  my $prof = &getprofil (%args);
 
-  my $NPROC_IO = int ($job_nproc_io);
-  my $NTASKS_TOT = int ($job_ntasks_tot);
-  my $NBNODES = int ($job_nnode);
-  my $NBTHREADS = int ($job_nthreads);
-  my $NTASKS = $NTASKS_TOT - $NPROC_IO;
-  my $NTASKS_BY_NODE = ($NBNODES > 0) ? int ($NTASKS_TOT / $NBNODES) : $NTASKS_TOT;
+  my $NBNODES = $prof->{nnode_fc} + $prof->{nnode_io};
 
   my $cjob_file = "$args{job_dir}/${code_name}.cjob";
-  my $content = '';
-  $content .= &read_file ("$args{ref_jobsdir}/$args{station}/multiheader");
-  $content .= "export STATION=$args{station}\n";
-  $content .= &read_file ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}");
-  $content .= &read_file ($JOB);
-  $content .= &read_file ("$args{ref_jobsdir}/$args{station}/jobtrailer");
+  my $content = &read_file ("$args{ref_jobsdir}/$args{station}/multiheader")
+              . "export STATION=$args{station}\n"
+              . &read_file ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
+              . &read_file ($JOB)
+              . &read_file ("$args{ref_jobsdir}/$args{station}/jobtrailer");
 
   my $nam_path_plain = "$args{ref_namdir}/$args{cycle_lc}";
   my $mitra_home_plain = $args{mitra_home};
   my $mit_install_dir = $args{mit_install_dir} // '';
 
-
   for ($content)
     {
       s/__jobname__/O${code_name}/go;
-      s/__ntasks_tot__/${NTASKS_TOT}/go;
-      s/__ntasks__/${NTASKS}/go;
-      s/__nb_proc_io__/${NPROC_IO}/go;
+
       s/__nb_nodes__/${NBNODES}/go;
-      s/__ntasks_by_node__/${NTASKS_BY_NODE}/go;
-      s/__nb_threads__/${NBTHREADS}/go;
-      s/__job_walltime__/${job_walltime}/go;
+
+      s/__nnode_fc__/$prof->{nnode_fc}/go;
+      s/__ntask_fc__/$prof->{ntask_fc}/go;
+      s/__nopmp_fc__/$prof->{nopmp_fc}/go;
+
+      s/__nnode_io__/$prof->{nnode_io}/go;
+      s/__ntask_io__/$prof->{ntask_io}/go;
+      s/__nopmp_io__/$prof->{nopmp_io}/go;
+
+      s/__job_walltime__/$prof->{walltime}/go;
       s/__v_cycle__/$args{cycle}/go;
       s/__my_own_pack__/${build}/go;
       s/__nam_path__/${nam_path_plain}/go;
       s/__mitra_pid__/$args{mitra_pid}/go;
       s/__mitra_home__/${mitra_home_plain}/go;
       s/__mit_install_dir__/${mit_install_dir}/go;
-      s/\[ ! -n "\$MIT_UNCHAINED_JOB" \] && \.\/test\.x\d+\s*\n//o;
     }
 
   (my $cj = 'FileHandle'->new (">$cjob_file"))
@@ -134,7 +141,6 @@ sub run
 
   my $mitra_pid;
   my $mitra_pid1;
-  my $mitra_idbypid = 'false';
   my $mitra_namdir = '';
 
   my $mitrc = "$ENV{HOME}/.mitrc";
@@ -146,9 +152,6 @@ sub run
 # the next chain ID
 MITRA_PID=0002
 
-# do you rather want to have the chains IDs
-# given by the process id (like before)?
-MITRA_IDbyPID=false
 BASTA
       $mf->close ();
       $mitra_pid = 1;
@@ -165,10 +168,6 @@ BASTA
         {
           $mitra_pid = $1 + 0;
         }
-      if ($mitrc_content =~ /MITRA_IDbyPID\s*=\s*(\w+)/)
-        {
-          $mitra_idbypid = $1;
-        }
       if ($mitrc_content =~ /MITRA_NAMDIR\s*=\s*(.+)/)
         {
           $mitra_namdir = $1;
@@ -176,30 +175,23 @@ BASTA
           $mitra_namdir =~ s/"$//;
         }
 
-      if ($mitra_idbypid eq 'true')
+      if (! defined $mitra_pid)
         {
-          $mitra_pid = $$;
+          die ("MITRA_PID variable is missing in \$HOME/.mitrc\n");
+        }
+      if ($mitra_pid <= 9999)
+        {
+          $mitra_pid1 = $mitra_pid + 1;
         }
       else
         {
-          if (! defined $mitra_pid)
-            {
-              die ("MITRA_PID variable is missing in \$HOME/.mitrc\n");
-            }
-          if ($mitra_pid <= 9999)
-            {
-              $mitra_pid1 = $mitra_pid + 1;
-            }
-          else
-            {
-              $mitra_pid1 = 1;
-            }
-          $mitrc_content =~ s/MITRA_PID\s*=\s*\d+/MITRA_PID=${mitra_pid1}/;
-          (my $mf2 = 'FileHandle'->new (">$mitrc"))
-            or die ("Cannot write `$mitrc'");
-          $mf2->print ($mitrc_content);
-          $mf2->close ();
+          $mitra_pid1 = 1;
         }
+      $mitrc_content =~ s/MITRA_PID\s*=\s*\d+/MITRA_PID=${mitra_pid1}/;
+      (my $mf2 = 'FileHandle'->new (">$mitrc"))
+        or die ("Cannot write `$mitrc'");
+      $mf2->print ($mitrc_content);
+      $mf2->close ();
     }
 
   $args{mitra_pid} = sprintf ("%04d", $mitra_pid);
@@ -238,21 +230,33 @@ BASTA
   my $profil_file = "$args{ref_jobsdir}/$args{station}/profil_table.csv";
   (my $pf = 'FileHandle'->new ("<$profil_file"))
     or die ("Cannot open `$profil_file'");
-  while (<$pf>)
+
+  chomp (my $h = <$pf>);
+
+  for ($h)
     {
-      chomp;
-      next if (/^\s*#/o || /^\s*$/o || /^job_name;/o);
-      my @cols = split (/;/o, $_);
-      shift @cols while (@cols && $cols[0] eq '');
-      next unless (@cols >= 6);
-      s/^\s+|\s+$//go for (@cols);
-      my $job_name = $cols[0];
-      my $walltime = $cols[1];
-      my $nproc_io = $cols[2];
-      my $nprocs = $cols[3];
-      my $nnode = $cols[4];
-      my $nthreads = $cols[5];
-      $PROFIL_TABLE{$job_name} = [$walltime, $nproc_io, $nprocs, $nnode, $nthreads];
+      s/^\s*//o; s/;\s*$//o; s/\s*$//o;
+    }
+
+  my @h = split (m/\s*;\s*/o, $h);
+
+  $PROFIL_TABLE{header} = \@h;
+
+  while (my $line = <$pf>)
+    {
+      chomp ($line);
+
+      for ($line)
+        {
+          s/^\s*//o; s/;\s*$//o; s/\s*$//o; 
+        }
+
+      my @c = split (m/\s*;\s*/o, $line);
+      for (@c)
+        {
+          s/^0+//o; $_ ||= 0;
+        }
+      $PROFIL_TABLE{$c[0]} = \@c;
     }
   $pf->close ();
 
@@ -285,8 +289,6 @@ BASTA
       &set_job (%args, job_name => "${CODE_JOB}.pjob", code_name => $CODE_JOB);
     }
   $proffh->close ();
-
-
 }
 
 1;

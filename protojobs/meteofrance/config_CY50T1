@@ -76,12 +76,28 @@ EXEC_IFSAUX_LFITOOLS=${GCOHOME}/tampon/bin/xrd/xr46/xr46t1_lfitools-bf.04.IMPIIF
 # IO POLL, recombining fields after io_serv
 IOPOLL="$IO_SERV_TOOLS_DIR/io_poll"
 # LFI copy, with repacking
-LFICP="$IO_SERV_TOOLS_DIR/lfi_copy -pack -force"
+LFICP="lficp"
 # LFI move, with repacking
-LFIMV="$IO_SERV_TOOLS_DIR/lfi_move -pack -force"
+LFIMV="lfimv"
 
 # Batch and MPI launch definitions
 SUBMIT=/usr/bin/sbatch
+
+function lfimv
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_move -pack -force $s $d
+}
+
+function lficp
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_copy -pack -force $s $d
+}
 
 function copy
 {
@@ -107,7 +123,11 @@ function mpilaunch
 
   ls -d ./* > dirlst
 
-  time /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto --verbose --wrap --wrap-stdeo -nn $NNODE -nnp $NTASK -openmp $NOPMP -- $*
+  time \
+    /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto \
+    --verbose --wrap --wrap-stdeo \
+        -nn $NNODE_FC -nnp $NTASK_FC -openmp $NOPMP_FC -- $* \
+    --  -nn $NNODE_IO -nnp $NTASK_IO -openmp $NOPMP_IO -- $* 
 }
 
 # xpnam

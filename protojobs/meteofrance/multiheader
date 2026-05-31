@@ -6,14 +6,20 @@
 #SBATCH --exclusiv
 #SBATCH -o __jobname__.o%j
 
-NNODE=__nb_nodes__
-NTASK=__ntasks_by_node__
-NOPMP=__nb_threads__
-if [ "__ntasks_tot__" == "__ntasks__" ]
+NNODE_FC=__nnode_fc__
+NTASK_FC=__ntask_fc__
+NOPMP_FC=__nopmp_fc__
+
+let "NPROC=$NNODE_FC*$NTASK_FC"
+
+NNODE_IO=__nnode_io__
+NTASK_IO=__ntask_io__
+NOPMP_IO=__nopmp_io__
+
+if [ $NTASK_IO -eq 0 ]
 then
-  let "NPROC=$NNODE*$NTASK"
-else
-  NPROC=__ntasks__
+  NTASK_IO=1
 fi
-NPROC_IO=__nb_proc_io__
+
+let "NPROC_IO=$NNODE_IO*$NTASK_IO"
 
