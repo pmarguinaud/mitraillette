@@ -41,11 +41,7 @@ ijj=22
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -66,11 +62,7 @@ ${CNMEXPL}.nam > namprovi
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 # Initial conditions:
 IFS_DATA=${FILE_PATH_IFS}
@@ -92,10 +84,6 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo ""
-set -x
 
 grib_api_prefix=$(ldd $MYOWNBIN  | perl -ne ' 
  next unless (m/libeccodes_f90/o); 
@@ -105,72 +93,41 @@ grib_api_prefix=$(ldd $MYOWNBIN  | perl -ne '
 
 export ECCODES_SAMPLES_PATH=$grib_api_prefix/share/eccodes/ifs_samples/grib1_mlgrib2:/MEMFS/ifs_samples/grib1_mlgrib2
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 $CP namprovi fort.4
 
-set +x
-echo ""
 echo " Job running "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file "
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
-set +x
-echo ""
-echo " Expand file ifs.stat "
-echo ""
-set -x
-\cat ifs.stat
 
 #      ***********************************
 #      *  Save model results             *
 #      ***********************************
 
-set +x
-echo ""
 echo " Save model results "
-echo ""
-set -x
 
 OUTNAME="${CNMEXPL}"
 
 # Historic files:
-#for iech in 06 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96
-for iech in 48
+for f in ICMSH*+*
 do
-  $CP ICMSH${CNMEXPS}+0000${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.HIST
+  $CP $f ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__$f
 done
 
-set +x
-echo ""
 echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
 

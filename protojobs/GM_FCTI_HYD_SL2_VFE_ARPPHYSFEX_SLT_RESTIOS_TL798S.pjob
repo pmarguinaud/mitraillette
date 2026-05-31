@@ -40,11 +40,7 @@ CNMEXPS="ARPE"
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -70,11 +66,7 @@ ${CNMEXPL}.nam > namprovi
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 # Initial conditions:
 $ECP ${FILE_PATH}/F7982017071518L.C024.L90pearp.prod_INIT ICMSH${CNMEXPS}INIT
@@ -96,16 +88,8 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo ""
-set -x
 
-set +x
-echo ""
 echo " Job running "
-echo ""
-set -x
 
 # Create SURFEX climatology and initial condition file with latest version
 
@@ -118,20 +102,12 @@ $XPNAM --dfile="${CNMEXPL}_CONVPGD.selnam_exseg1.diff" --inplace EXSEG1.nam
 mpilaunch $MYOWNBIN
 \mv ICMSH${CNMEXPS}+0000.sfx Const.Clim.sfx.new
 
-set +x
-echo ""
-echo ""
-set -x
 
 $XPNAM --dfile="${CNMEXPL}_CONVPREP.nam.diff" --inplace fort.4
 
 mpilaunch $MYOWNBIN
 \mv ICMSH${CNMEXPS}+0000.sfx ICMSH${CNMEXPS}INIT.sfx.new
 
-set +x
-echo ""
-echo ""
-set -x
 
 # Reset namelist; forecast up to step 28, dump restart files at step 23, output historic file at step 28
 
@@ -186,10 +162,6 @@ do
   \mv $f $f.0
 done
 
-set +x
-echo ""
-echo ""
-set -x
 
 \ls -l
 
@@ -204,27 +176,15 @@ do
   \mv $f $f.1
 done
 
-set +x
-echo ""
-echo ""
-set -x
 
 \ls -l
 
 (
   export DR_HOOK=0
   export DR_HOOK_NOT_MPI=1 
-  set +x
-  echo ""
   echo " Differences between non-interrupted forecast and restarted forecast -------------------------------- "
-  echo ""
-  set -x
   $LFITOOLS lfidiff --lfi-file-1  ICMSH${CNMEXPS}+0028.0 --lfi-file-2 ICMSH${CNMEXPS}+0028.1
-  set +x
-  echo ""
   echo " End of differences --------------------------------------------------------------------------------- "
-  echo ""
-  set -x
 )
 
 

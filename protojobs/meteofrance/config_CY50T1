@@ -1,3 +1,6 @@
+set -x
+set -e
+
 #
 # Mitraillette configuration file for BELENOS (V102025)
 #
@@ -61,10 +64,10 @@ FILE_PATH_PGD=${INPUTFILES_HOME}/const/mesonh/PGD/V02
 
 # Definition of cp/ecp for files and namelists
 # - for files which are on the local machine.
-CP="/bin/cp"    # 'ln -s' is forbidden for this command
+CP="copy"    # 'ln -s' is forbidden for this command
 # - for files which may be either on a storage machine or on the local machine.
 ## ECP="/bin/cp"   # 'ln -s' is allowed for this command
-ECP="ln -s"   # 'ln -s' is allowed for this command
+ECP="ln -sf"   # 'ln -s' is allowed for this command
 
 # io_serv tools
 # LFITOOLS
@@ -79,6 +82,18 @@ LFIMV="$IO_SERV_TOOLS_DIR/lfi_move -pack -force"
 
 # Batch and MPI launch definitions
 SUBMIT=/usr/bin/sbatch
+
+function copy
+{
+  d="${!#}"
+  set -- "${@:1:$#-1}"
+
+  for s in $*
+  do
+    mkdir -p $(dirname $d)
+    /bin/cp $s $d
+  done
+}
 
 function mpilaunch 
 {
@@ -105,7 +120,7 @@ NCOMBFLEN=1800000
 MP_TYPE=2
 
 # BULL specific environment variables
-set -x
+
 ulimit -s unlimited
 module purge
 

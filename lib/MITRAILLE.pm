@@ -87,23 +87,25 @@ sub set_job
   my $mitra_home_plain = $args{mitra_home};
   my $mit_install_dir = $args{mit_install_dir} // '';
 
-  $content =~ s/__jobname__/O${code_name}/go;
-  $content =~ s/__ntasks_tot__/${NTASKS_TOT}/go;
-  $content =~ s/__ntasks__/${NTASKS}/go;
-  $content =~ s/__nb_proc_io__/${NPROC_IO}/go;
-  $content =~ s/__nb_nodes__/${NBNODES}/go;
-  $content =~ s/__ntasks_by_node__/${NTASKS_BY_NODE}/go;
-  $content =~ s/__nb_threads__/${NBTHREADS}/go;
-  $content =~ s/__job_walltime__/${job_walltime}/go;
-  $content =~ s/__v_cycle__/$args{cycle}/go;
-  $content =~ s/__my_own_pack__/${build}/go;
-  $content =~ s/__nam_path__/${nam_path_plain}/go;
-  $content =~ s/__mitra_pid__/$args{mitra_pid}/go;
-  $content =~ s/__mitra_home__/${mitra_home_plain}/go;
-  $content =~ s/__mit_install_dir__/${mit_install_dir}/go;
 
-  # Remove test.x invocation since test.x is no longer generated
-  $content =~ s/\[ ! -n "\$MIT_UNCHAINED_JOB" \] && \.\/test\.x\d+\s*\n//o;
+  for ($content)
+    {
+      s/__jobname__/O${code_name}/go;
+      s/__ntasks_tot__/${NTASKS_TOT}/go;
+      s/__ntasks__/${NTASKS}/go;
+      s/__nb_proc_io__/${NPROC_IO}/go;
+      s/__nb_nodes__/${NBNODES}/go;
+      s/__ntasks_by_node__/${NTASKS_BY_NODE}/go;
+      s/__nb_threads__/${NBTHREADS}/go;
+      s/__job_walltime__/${job_walltime}/go;
+      s/__v_cycle__/$args{cycle}/go;
+      s/__my_own_pack__/${build}/go;
+      s/__nam_path__/${nam_path_plain}/go;
+      s/__mitra_pid__/$args{mitra_pid}/go;
+      s/__mitra_home__/${mitra_home_plain}/go;
+      s/__mit_install_dir__/${mit_install_dir}/go;
+      s/\[ ! -n "\$MIT_UNCHAINED_JOB" \] && \.\/test\.x\d+\s*\n//o;
+    }
 
   (my $cj = 'FileHandle'->new (">$cjob_file"))
     or die ("Cannot write `$cjob_file'");
@@ -202,10 +204,6 @@ BASTA
   $args{mitra_pid} = sprintf ("%04d", $mitra_pid);
   $args{ref_namdir} = $mitra_namdir if ($mitra_namdir);
 
-  print "\n ********************************************************\n";
-  print " **M_INFO   ** BEGINNING OF mitraillette.pl ( id = $args{mitra_pid} )\n";
-  print " ********************************************************\n\n";
-
   #---------------------------------------------------------------------------------------------------------
   # 2. Arguments tests
   #---------------------------------------------------------------------------------------------------------
@@ -265,7 +263,6 @@ BASTA
   $args{job_dir} = "$args{mitra_home}/$args{cycle_lc}/mitraille_$args{mitra_pid}";
 
   mkdir ($args{job_dir}) if (! -d $args{job_dir});
-  print "\n **M_INFO   ** Created directory $args{job_dir} \n\n";
 
   #---------------------------------------------------------------------------------------------------------
   # 5. Process PRO_FILE and generate jobs
@@ -287,15 +284,7 @@ BASTA
     }
   $proffh->close ();
 
-  #---------------------------------------------------------------------------------------------------------
-  # 6. Finalise
-  #---------------------------------------------------------------------------------------------------------
 
-  print "\n **************************************************\n";
-  print " **M_INFO   ** END OF mitraillette.pl ( id = $args{mitra_pid} )\n";
-  print " **************************************************\n\n";
-
-  print "mitraillette.pl finished ( id = $args{mitra_pid} )\n";
 }
 
 1;

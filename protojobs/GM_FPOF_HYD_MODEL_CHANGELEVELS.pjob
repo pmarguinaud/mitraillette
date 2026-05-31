@@ -41,11 +41,7 @@ inflevgfin=105
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -79,30 +75,20 @@ sed -e "s/val_sitr/300./" -e "s/val_sipr/80000./" namprovi_fc > namprovi3
 #      *  Execution                    *
 #      *********************************
 
-set +x
-echo ""
-echo ""
-set -x
 
 # -----------------------------------------------------------------------------
 # JOB NO 0: FULLPOS
 
-set +x
 echo " "
 echo " ======= "
 echo " FULLPOS "
 echo " ======= "
-set -x
 
 #      *****************************************************
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 $ECP ${FILE_PATH}/B${insmaxa}${idate}L.C010.${indgl}l.L${inflevg} EBAUCHE
 $CP EBAUCHE ICMSH${CNMEXPS}INIT
@@ -111,46 +97,29 @@ chmod 644 ICMSH${CNMEXPS}INIT
 # Constants for RRTM radiation scheme: none
 # Constants for SRTM radiation scheme: none
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 \cat < namprovi0
 $CP namprovi0 fort.4
 \rm namprovi0
 
-set +x
-echo ""
 echo " Job no 0 running "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file "
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
 ls -l
 
-\rm ifs.stat
 \rm -f core*
 
 ## $CP PF${CNMEXPS}000+0000 ${FILE_PATH}/B${insmaxa}${idate}L.C010.${indgl}l.L${inflevgfin}
@@ -161,65 +130,42 @@ ls -l
 for inum in 1 2 3
 do
 
-set +x
 echo " "
 echo " ================ "
 echo " FORECAST ${inum} "
 echo " ================ "
-set -x
 
 #      *****************************************************
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 $CP PF${CNMEXPS}000+0000 ICMSH${CNMEXPS}INIT
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 \cat < namprovi${inum}
 $CP namprovi${inum} fort.4
 \rm namprovi${inum}
 
-set +x
-echo ""
 echo " Job no ${inum} running "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file "
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
 ls -l
 
-\rm ifs.stat
 \rm -f core*
 
 done # inum

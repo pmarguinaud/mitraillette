@@ -879,15 +879,12 @@ sub createMitrailletteTestCase
   my @test0 = map { &basename ($_) } <$dir/*>;
   my %test0 = map { ($_, 1) } @test0;
   
-  &runMitrailleCommand (env => {BUILD => $build->getPath ()}, command => ['./mitraillette.x', $args{version}, &basename ($pro_file)], %args);
+  &runMitrailleCommand (env => {BUILD => $build->getPath ()}, command => ['./bin/mitraillette.pl', $args{version}, &basename ($pro_file)], %args);
   
   my @test1 = map { &basename ($_) } <$dir/*>;
   my ($mitraillette) = grep { ! $test0{$_} } @test1;
   
   $mitraillette = "$MITRAILLE/$dir/$mitraillette";
-  
-  unlink ($_) for (<$mitraillette/chainjob*>);
-  unlink ($_) for (<job_end.x*>, <test.x*>, <log_file_*>, <rank_last.x*>, <mitraillette.o*>, <rank_file.x*>);
   
   my @cjob = sort <$mitraillette/*.cjob>;
 

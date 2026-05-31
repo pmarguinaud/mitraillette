@@ -32,11 +32,7 @@ domain2=ARP_TL798
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -48,11 +44,7 @@ $CP ${NAM_PATH}/${CNMEXPL}.selnam_pgd OPTIONS.nam
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 # * clay, sand
 
@@ -81,40 +73,20 @@ $ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_cover
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo ""
-set -x
 
-set +x
-echo ""
 echo " PGDEXE job running "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
-set +x
-echo ""
-echo ""
-set -x
 
-set +x
-echo ""
 echo " Expand file LISTING_PGD.txt"
-echo ""
-set -x
 \cat LISTING_PGD.txt
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
   done
 fi
@@ -123,11 +95,7 @@ fi
 #      *  Save model results             *
 #      ***********************************
 
-set +x
-echo ""
 echo " Save PGD files "
-echo ""
-set -x
 
 OUTNAME="${CNMEXPL}"
 
@@ -135,11 +103,7 @@ OUTNAME="${CNMEXPL}"
 ## $CP PGD_${domain2}_c923.fa ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PGD_${domain2}_c923.fa
 $CP PGD_${domain2}_c923.fa ${WORKDIR}/SURFEX_FILES/PGD_${domain2}_c923.fa
 
-set +x
-echo ""
 echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
 

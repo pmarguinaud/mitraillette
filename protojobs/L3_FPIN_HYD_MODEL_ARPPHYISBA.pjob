@@ -31,11 +31,7 @@ CNMEXPS="ARPE"
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -64,11 +60,7 @@ namprovi1 > namprovi_prov
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 # Initial conditions:
 $ECP ${FILE_PATH}/FRAN_20080710r0_analyse+0000 ICMSH${CNMEXPS}INIT
@@ -93,24 +85,12 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 #       *   Execution: just the model    *
 #       **********************************
 
-set +x
-echo ""
-echo ""
-set -x
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 $CP namprovi1 fort.4
 \cat < namprovi1
 
-set +x
-echo ""
 echo " Job running (just the model) "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
@@ -133,11 +113,7 @@ ls -lrt
 $CP namprovi2 fort.4
 \cat < namprovi2
 
-set +x
-echo ""
 echo " Job running (in-line model) "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
@@ -159,11 +135,7 @@ ls -ltr
 $CP namprovi3 fort.4
 \cat < namprovi3
 
-set +x
-echo ""
 echo " Job running (off line) "
-echo ""
-set -x
 
 \rm ICMSH${CNMEXPS}INIT
 $CP ICMSH${CNMEXPS}+0003 ICMSH${CNMEXPS}INIT
@@ -184,16 +156,10 @@ ls -ltr
 #       *       Check differences        *
 #       **********************************
 
-set +x
-echo ""
 echo " Check differences  "
-echo ""
-set -x
 
-set +x ; echo "     ******* DIFFERENCE IN-LINE/OFF-LINE pour le post-processing ******* " ; set -x
 diff in_line off_line
 
-set +x ; echo "     ******* DIFFERENCE MODELE/IN-LINE/pour le modele ******* " ; set -x
 diff just_model in_line
 
 

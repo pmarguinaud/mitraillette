@@ -35,11 +35,7 @@ CNMEXPS="ARPE"
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -60,11 +56,7 @@ ${CNMEXPL}.nam > namprovi
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 # Initial conditions:
 $ECP ${FILE_PATH}/B0312005071500L.C010.032l.L15 ICMSH${CNMEXPS}INIT
@@ -80,86 +72,41 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo ""
-set -x
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 $CP namprovi fort.4
 
-set +x
-echo ""
 echo " Job running "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file "
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
-set +x
-echo ""
-echo " Expand file ifs.stat "
-echo ""
-set -x
-\cat ifs.stat
 
 #      ***********************************
 #      *  Save model results             *
 #      ***********************************
 
-set +x
-echo ""
 echo " Save model results "
-echo ""
-set -x
 
 OUTNAME="${CNMEXPL}"
 
-nb=1
-SV_CAL_NSTOP=12
-SV_CAL_NBVECT=2
-
-while [ $nb -le ${SV_CAL_NBVECT} ]
+for sv in SVARPE*
 do
-  if [ $nb -le 9 ]
-  then
-    num="0$nb"
-  else
-    num=$nb
-  fi
-  $CP SVARPE0${num}+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__SV0312005071500L.C010.S${SV_CAL_NSTOP}V${num}
-  ((nb=$nb+1))
+  $CP $sv ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__SV0312005071500L.C010.$sv
 done
 
-set +x
-echo ""
 echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
 

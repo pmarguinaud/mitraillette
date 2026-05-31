@@ -30,11 +30,7 @@ DOMM='lalon_franx01'
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -55,17 +51,9 @@ ${CNMEXPL}.nam > namprovi
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo ""
-set -x
 
 
-set +x
-echo ""
 echo " Do namelists for each job "
-echo ""
-set -x
 
 sed "s/ N923=0/ N923=1/" namprovi > namprovi_1
 
@@ -94,11 +82,7 @@ sed "s/ N923=0/ N923=9/" namprovi > namprovi_9
 #      *  Part 1     *
 #      ***************
 
-set +x
-echo ""
 echo " Get input files necessary for part 1 "
-echo ""
-set -x
 
 $CP ${FILE_PATH_DBASE1}/* .
 gzip -d Dh_over_Dx_Dh_over_Dy.gz
@@ -120,11 +104,7 @@ $CP PGDFILE_${DOMM}.fa   Neworog
 # Constants for RRTM radiation scheme: none
 # Constants for SRTM radiation scheme: none
 
-set +x
-echo ""
 echo " Run part 1 "
-echo ""
-set -x
 
 \mv namprovi_1 fort.4
 mpilaunch $MYOWNBIN
@@ -132,28 +112,18 @@ codrep=$?
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
 if [ $codrep -ne 0 ] ;then
-  set +x
   echo "  >>>>>>>>>failed: part 1 "
-  set -x
   exit
 fi
 
@@ -165,11 +135,7 @@ ls -l
 #      *  Part 2     *
 #      ***************
 
-set +x
-echo ""
 echo " Get input files necessary for part 2 "
-echo ""
-set -x
 
 path_2=${FILE_PATH_DBASE2}
 $CP ${path_2}/itp_GL   itp_GL
@@ -181,11 +147,7 @@ $CP ${path_2}/sab_GL   sab_GL
 $CP ${path_2}/vgx_GL   vgx_GL
 $CP ${path_2}/dpr_GL   dpr_GL
 
-set +x
-echo ""
 echo " Run part 2 "
-echo ""
-set -x
 
 \mv namprovi_2 fort.4
 mpilaunch $MYOWNBIN
@@ -193,28 +155,18 @@ codrep=$?
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
 if [ $codrep -ne 0 ] ;then
-  set +x
   echo "  >>>>>>>>>failed: part 2 "
-  set -x
   exit
 fi
 
@@ -224,22 +176,14 @@ ls -l
 #      *  Part 3     *
 #      ***************
 
-set +x
-echo ""
 echo " Get input files necessary for part 3 "
-echo ""
-set -x
 
 $CP ${FILE_PATH_DBASE3}/N108_GL  N108_GL
 for MM in 01 02 03 04 05 06 07 08 09 10 11 12 ; do
   $CP  Const.Clim  Const.Clim.${MM}
 done
 
-set +x
-echo ""
 echo " Run part 3 "
-echo ""
-set -x
 
 \mv namprovi_3 fort.4
 mpilaunch $MYOWNBIN
@@ -247,28 +191,18 @@ codrep=$?
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
 if [ $codrep -ne 0 ] ;then
-  set +x
   echo "  >>>>>>>>>failed: part 3 "
-  set -x
   exit
 fi
 
@@ -279,11 +213,7 @@ ls -l
 #      *  Parts 4 to 9  *
 #      ******************
 
-set +x
-echo ""
 echo " Get input files necessary for parts 4 to 6 (those which do not depend on the month) "
-echo ""
-set -x
 
 $CP ${path_2}/z0v_GL  z0v_GL
 $CP ${path_2}/alv_GL  alv_GL
@@ -305,28 +235,16 @@ gzip -d  rel_GL.gz
 #for MM in 01 02 03 04 05 06 07 08 09 10 11 12 ; do
 for MM in 01 ; do
 
-  set +x
-  echo ""
   echo " Month $MM "
-  echo ""
-  set -x
 
-  set +x
-  echo ""
   echo " Get input monthly files necessary for part 4 "
-  echo ""
-  set -x
 
   \mv  Const.Clim.${MM}  Const.Clim
 
   $CP ${path_2}/veg${MM}_GL  veg_GL
   $CP ${path_2}/lai${MM}_GL  lai_GL
 
-  set +x
-  echo ""
   echo " Run part 4 "
-  echo ""
-  set -x
 
   $CP namprovi_4 fort.4
   mpilaunch $MYOWNBIN
@@ -334,47 +252,29 @@ for MM in 01 ; do
 
   ls -l
 
-  set +x
-  echo ""
-  echo ""
-  set -x
 
   if [ -a NODE.001_01 ]
   then
     for file in NODE*
     do
-      set +x
-      echo ""
       echo " Expand file $file"
-      echo ""
-      set -x
       \cat $file
     done
   fi
 
   if [ $codrep -ne 0 ] ;then
-    set +x
     echo "  >>>>>>>>>failed: part 4 "
-    set -x
     exit
   fi
 
   \rm veg_GL lai_GL
 
-  set +x
-  echo ""
   echo " Get input monthly files necessary for part 5 "
-  echo ""
-  set -x
 
   $CP ${path_5}/veg_${MM}_HR  veg_HR
   $CP ${path_5}/lai_${MM}_HR  lai_HR
 
-  set +x
-  echo ""
   echo " Run part 5 "
-  echo ""
-  set -x
 
   $CP namprovi_5 fort.4
   mpilaunch $MYOWNBIN
@@ -382,38 +282,24 @@ for MM in 01 ; do
 
   ls -l
 
-  set +x
-  echo ""
-  echo ""
-  set -x
 
   if [ -a NODE.001_01 ]
   then
     for file in NODE*
     do
-      set +x
-      echo ""
       echo " Expand file $file"
-      echo ""
-      set -x
       \cat $file
     done
   fi
 
   if [ $codrep -ne 0 ] ;then
-    set +x
     echo "  >>>>>>>>>failed: part 5 "
-    set -x
     exit
   fi
 
   \rm veg_HR lai_HR
 
-  set +x
-  echo ""
   echo " Get input monthly files necessary for part 6 "
-  echo ""
-  set -x
 
   $CP ${path_6}/tpl_${MM}_GL.gz  tsl_GL.gz
   $CP ${path_6}/tpl_${MM}_GL.gz  tpl_GL.gz
@@ -426,11 +312,7 @@ for MM in 01 ; do
   gzip -d  wpl_GL
   gzip -d  snl_GL
 
-  set +x
-  echo ""
   echo " Run part 6 "
-  echo ""
-  set -x
 
   $CP namprovi_6 fort.4
   mpilaunch $MYOWNBIN
@@ -438,28 +320,18 @@ for MM in 01 ; do
 
   ls -l
 
-  set +x
-  echo ""
-  echo ""
-  set -x
 
   if [ -a NODE.001_01 ]
   then
     for file in NODE*
     do
-      set +x
-      echo ""
       echo " Expand file $file"
-      echo ""
-      set -x
       \cat $file
     done
   fi
 
   if [ $codrep -ne 0 ] ;then
-    set +x
     echo "  >>>>>>>>>failed: part 6 "
-    set -x
     exit
   fi
 
@@ -470,11 +342,7 @@ for MM in 01 ; do
   #      *  Save model results             *
   #      ***********************************
 
-  set +x
-  echo ""
   echo " Write output monthly climatologies "
-  echo ""
-  set -x
 
   OUTNAME="${CNMEXPL}"
 
@@ -483,11 +351,7 @@ for MM in 01 ; do
 
 done
 
-set +x
-echo ""
 echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
 

@@ -45,11 +45,7 @@ CNMEXPS="ARPE"
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -73,11 +69,7 @@ sed -e "s/_lbias_/.FALSE./" -e "s/_lincr_/.TRUE./" namprovi > namprovi_incr
 #      *  Get input files for bias.                        *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files for bias "
-echo ""
-set -x
 
 # Initial conditions:
 $ECP ${FILE_PATH}/FRAN_20080709r18_guess+0006 ICMSH${CNMEXPS}INIT
@@ -97,62 +89,32 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 #      *  Execution for bias *
 #      ***********************
 
-set +x
-echo ""
-echo ""
-set -x
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 $CP namprovi_bias fort.4
 
-set +x
-echo ""
 echo " Job running "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
-set +x
-echo ""
-echo " Expand file ifs.stat "
-echo ""
-set -x
-\cat ifs.stat
 
 #      ***********************************
 #      *  Save model results for bias    *
 #      ***********************************
 
-set +x
-echo ""
 echo " Save model results for bias "
-echo ""
-set -x
 
 OUTNAME="${CNMEXPL}"
 $CP ICMSH${CNMEXPS}+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__BIAS
@@ -166,11 +128,7 @@ mv ICMSH${CNMEXPS}+0000 ICMSH${CNMEXPS}BIAS
 #      *  Get input files for incr.                       **
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files for incr "
-echo ""
-set -x
 
 # Initial conditions (get analysis file):
 $ECP ${FILE_PATH}/FRAN_20080710r0_analyse+0000 ICMSH${CNMEXPS}INIT
@@ -189,65 +147,35 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 #      *  Execution for incr *
 #      ***********************
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 $CP namprovi_incr fort.4
 
-set +x
-echo ""
 echo " Job running "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
-set +x
-echo ""
-echo " Expand file ifs.stat "
-echo ""
-set -x
-\cat ifs.stat
 
 #      ***********************************
 #      *  Save model results for incr    *
 #      ***********************************
 
-set +x
-echo ""
 echo " Save model results for incr "
-echo ""
-set -x
 
 $CP ICMSH${CNMEXPS}+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0000.HIST
 
-set +x
-echo ""
 echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
 

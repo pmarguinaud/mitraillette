@@ -31,11 +31,7 @@ CNMEXPS="ARPE"
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -56,11 +52,7 @@ ${CNMEXPL}.nam > namprovi
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 # Initial conditions:
 $ECP ${FILE_PATH}/GB1072010011800L.C010.L70bb.108l ICMSH${CNMEXPS}INIT
@@ -78,73 +70,39 @@ $ECP ${FILE_PATH}/clim_arpege.tl798.01.m01 const.clim.000
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo ""
-set -x
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 $CP namprovi fort.4
 
-set +x
-echo ""
 echo " Job running "
-echo ""
-set -x
 
 mpilaunch $MYOWNBIN
 
 ls -l
 
-set +x
-echo ""
-echo ""
-set -x
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file "
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
-set +x
-echo ""
-echo " Expand file ifs.stat "
-echo ""
-set -x
-\cat ifs.stat
 
 #      ***********************************
 #      *  Save model results             *
 #      ***********************************
 
-set +x
-echo ""
 echo " Save model results "
-echo ""
-set -x
 
 OUTNAME="${CNMEXPL}"
 
 # Post-processing files:
 $CP PF${CNMEXPS}000+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}000+0000
 
-set +x
-echo ""
 echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
 
