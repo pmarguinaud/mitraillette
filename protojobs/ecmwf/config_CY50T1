@@ -60,12 +60,28 @@ EXEC_IFSAUX_LFITOOLS=/perm/soa1/mitraille/io_serv_tools/lfitools_cy50t1rc.OMPIIF
 # IO POLL, recombining fields after io_serv
 IOPOLL="$IO_SERV_TOOLS_DIR/io_poll"
 # LFI copy, with repacking
-LFICP="$IO_SERV_TOOLS_DIR/lfi_copy -pack -force"
+LFICP="lficp"
 # LFI move, with repacking
-LFIMV="$IO_SERV_TOOLS_DIR/lfi_move -pack -force"
+LFIMV="lfimv"
 
 # Batch and MPI launch definitions
 SUBMIT=/usr/local/bin/sbatch
+
+function lfimv
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_move -pack -force $s $d
+}
+
+function lficp
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_copy -pack -force $s $d
+}
 
 function copy
 {
@@ -91,7 +107,11 @@ function mpilaunch
 
   ls -d ./* > dirlst
 
-  time /home/sor/install/mpiauto/mpiauto --verbose --wrap-stdeo --wrap --nn $NNODE -nnp $NTASK -openmp $NOPMP -- $*
+  time \
+    /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto \
+    --verbose --wrap --wrap-stdeo \
+        -nn $NNODE_FC -nnp $NTASK_FC -openmp $NOPMP_FC -- $* \
+    --  -nn $NNODE_IO -nnp $NTASK_IO -openmp $NOPMP_IO -- $* 
 }
 
 # xpnam
@@ -118,7 +138,7 @@ export KMP_MONITOR_STACKSIZE=1G
 export EC_MPI_ATEXIT=0
 export EC_PROFILE_HEAP=0
 export MPIAUTOCONFIG=mpiauto.TIME.conf
-export OMP_NUM_THREADS=__nb_threads__
+
 export DR_HOOK=1
 export DR_HOOK_IGNORE_SIGNALS=-1
 export DR_HOOK_SILENT=1
