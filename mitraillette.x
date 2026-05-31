@@ -258,8 +258,6 @@ getprofil () {
  eval $4=$(echo ${pickProfile} | awk '{ print $4}')
  eval $5=$(echo ${pickProfile} | awk '{ print $5}')
  eval $6=$(echo ${pickProfile} | awk '{ print $6}')
- eval $7=$(echo ${pickProfile} | awk '{ print $7}')
- eval $8=$(echo ${pickProfile} | awk '{ print $8}')
 }
 
 function set_job 
@@ -270,7 +268,7 @@ COMMENT=$3
 # We distinguish between NTASKS which matches the namelist variable "NPROC",
 #  and NTASKS_TOT which is the total number of processors which appears in the job header (NTASKS_TOT >= NTASKS).
  getjob JOB $JOB_NAME
- getprofil $JOB_NAME job_maxmem job_walltime job_cputime job_nproc_io job_ntasks_tot job_nnode job_nthreads
+ getprofil $JOB_NAME job_walltime job_nproc_io job_ntasks_tot job_nnode job_nthreads
 
   NPROC_IO=`echo $job_nproc_io | awk '{printf("%d",$0)}'` # matches with namelist variable "NPROC_IO"
   NTASKS_TOT=`echo $job_ntasks_tot | awk '{printf("%d",$0)}'` # total number of processors
@@ -293,9 +291,7 @@ COMMENT=$3
       s/__nb_nodes__/${NBNODES}/go; 
       s/__ntasks_by_node__/${NTASKS_BY_NODE}/go; 
       s/__nb_threads__/${NBTHREADS}/go; 
-      s/__job_maxmem__/${job_maxmem}/go; 
       s/__job_walltime__/${job_walltime}/go;  
-      s/__job_cputime__/${job_cputime}/go; 
       s/__v_cycle__/${CYCLE}/go; 
       s/__my_own_pack__/\$ENV{BUILD}/go; 
       s/__nam_path__/${nam_path}/go;  
@@ -348,14 +344,14 @@ echo "\n **M_INFO   ** Created directory $JOB_DIR \n" | tee -a ${LOG_MIT}
 # Preparing last job to solve the "qcat -n" bug at the end (old version).
 ##############################################################################################
 
-getprofil endjob job_maxmem job_walltime job_cputime job_nproc_io job_ntasks_tot job_nnode job_nthreads
+getprofil endjob job_walltime job_nproc_io job_ntasks_tot job_nnode job_nthreads
 NBPROCS_END=`echo $job_ntasks_tot | awk '{printf("%d",$0)}'`
 NBNODES_END=`echo $job_nnode | awk '{printf("%d",$0)}'`
 NTASKS_END=$(( $NBPROCS_END / $NBNODES_END ))
 NB_THREADS_END=`echo $job_nthreads | awk '{printf("%d",$0)}'`
 sed  -e "s/__jobname__/endjob/" \
-     -e "s/__job_maxmem__/${job_maxmem}/" -e "s/__nb_threads__/${NB_THREADS_END}/" \
-     -e "s/__job_walltime__/${job_walltime}/" -e "s/__job_cputime__/${job_cputime}/" \
+     -e "s/__nb_threads__/${NB_THREADS_END}/" \
+     -e "s/__job_walltime__/${job_walltime}/" \
      -e "s/__ntasks_tot__/${NBPROCS_END}/" \
      -e "s/__nb_nodes__/${NBNODES_END}/" -e "s/__ntasks_by_node__/${NTASKS_END}/" \
      $MULTIHEADER > job_end.x${MITRA_PID}
