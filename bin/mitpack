@@ -813,14 +813,27 @@ sub runMitrailleCommand
   my %args = @_;
   my @cmd = @{ ${args}{command} };
 
+  my %env = %ENV;
+
+  %ENV = (%ENV, %{ $args{env} || {} });
+
   print "@cmd\n" if ($args{verbose});
 
   my $profile = "$HOME/.mitraille_profile";
 
-  die ("`$profile' was not found\n") unless (-f $profile);
+  eval  
+    {
+      die ("`$profile' was not found\n") unless (-f $profile);
+     
+      system ("set -e; source $profile; @cmd")
+        and die ("Command `@cmd' failed\n");
+    };
 
-  system ("set -e; source $profile; @cmd")
-    and die ("Command `@cmd' failed\n");
+  my $c = $@;
+
+  %ENV = %env;
+
+  $c && die ($c);
 }
 
 sub swapLink
@@ -842,42 +855,10 @@ sub swapLink
   symlink ($f, $g);
 }
 
-sub generateProFile
+sub getProFile
 {
   my %args = @_;
-  my $build = $args{build};
-
-  my $MASTERODB = $build->getExecutablePath ('MASTERODB');
-
-  my $p = $build->getLabel ();
-
-  my @list = do 
-  { 
-    my $pro_file = "$MITRAILLE/PRO_FILE.$args{version}";
-    my $fh = 'FileHandle'->new ("<$pro_file"); 
-    $fh or die ("Cannot open `$pro_file'");
-    <$fh>
-  };
-
-  for (@list)   
-    {
-      s/(?:^\s*|\s*)$//go;
-    }
-
-  @list = grep { (! m/^\s*$/o) && (! m/^#/o) } @list;
-
-  my $pro_file = "$MITRAILLE/PRO_FILE.$p";
-
-  my $fh = 'FileHandle'->new (">$pro_file");
-
-  for my $job (@list)
-    {
-      next unless ($job =~ m/^(?:L1_|L2_|L3_|GM_|IFS_|GE_)/o);
-      $fh->printf ("%-80s %s\n", $job, $MASTERODB);
-    }
-
-  $fh->close ();
-
+  my $pro_file = "$MITRAILLE/PRO_FILE.$args{version}";
   return $pro_file;
 }
 
@@ -887,7 +868,7 @@ sub createMitrailletteTestCase
 
   my $build = $args{build};
 
-  my $pro_file = &generateProFile (build => $build, %args);
+  my $pro_file = &getProFile (build => $build, %args);
 
   chdir ($MITRAILLE);
   
@@ -898,7 +879,7 @@ sub createMitrailletteTestCase
   my @test0 = map { &basename ($_) } <$dir/*>;
   my %test0 = map { ($_, 1) } @test0;
   
-  &runMitrailleCommand (command => ['./mitraillette.x', $args{version}, &basename ($pro_file)], %args);
+  &runMitrailleCommand (env => {BUILD => $build->getPath ()}, command => ['./mitraillette.x', $args{version}, &basename ($pro_file)], %args);
   
   my @test1 = map { &basename ($_) } <$dir/*>;
   my ($mitraillette) = grep { ! $test0{$_} } @test1;

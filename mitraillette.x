@@ -297,7 +297,7 @@ COMMENT=$3
       s/__job_walltime__/${job_walltime}/go;  
       s/__job_cputime__/${job_cputime}/go; 
       s/__v_cycle__/${CYCLE}/go; 
-      s/__my_own_bin__/${UL_MOWN}/go; 
+      s/__my_own_pack__/\$ENV{BUILD}/go; 
       s/__nam_path__/${nam_path}/go;  
       s/__mitra_pid__/${MITRA_PID}/go;  
       s/__mitra_home__/${mitra_home}/go; 
@@ -468,17 +468,13 @@ echo "\n **M_INFO   ** Profiling of the validation read from $PRO_FILE \n" | tee
 # -------------------------------------------------------------------------------------------------------------------
 
 cat ../${PRO_FILE} | sed "s/\t/ /g" |
-while read VAR1 VAR2
+while read VAR1 
 do
 # add the possibility of comment lines in PROFILE file
   COMMENT=$(echo $VAR1 | cut -c1)
   if [ "$COMMENT" = '#' ]; then ; continue ; fi
 
-  echo "               *-->$VAR1<-->$VAR2<--*" | tee -a ${LOG_MIT}
-  VAR2=$(echo $VAR2 | sed -e 's/\//\\\//g' -e 's/\$/\\\$/g')
-
   CODE_JOB=$VAR1
-  UL_MOWN=$VAR2
 
   # - Syntax is generally (maximal number of characters of identifier is 60):
   # if [ "$CODE_JOB" = 'identifier' ]                                                   ; then ; set_job ${CODE_JOB}.pjob $CODE_JOB "comment on 105 characters                                                                                " ; fi

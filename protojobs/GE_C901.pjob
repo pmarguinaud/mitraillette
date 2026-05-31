@@ -15,7 +15,7 @@ echo "@@ `date`"
 export TEMPORAIRE=$TMP_LOC
 cd $TEMPORAIRE || exit
 
-MYOWNBIN=__my_own_bin__
+MYOWNBIN=__my_own_pack__/bin/MASTERODB
 [ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
 CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
