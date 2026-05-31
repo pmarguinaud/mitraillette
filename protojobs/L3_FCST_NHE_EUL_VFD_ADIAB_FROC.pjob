@@ -14,6 +14,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHE euler; no DFI; FullPCiter                                                                   
+
 CNMEXPL=L3_FCST_NHE_EUL_VFD_ADIAB_FROC
 
 TEMPLATE=$CNMEXPL

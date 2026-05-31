@@ -8,6 +8,8 @@
 #------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD FPOS OPEX; LELAM=T; CFPFMT=LELAM; C+I; OFF-LINE                                             
+
 CNMEXPL=L3_FPOF_HYD_GPLELAM_CI_OPEX
 
 TEMPLATE=$CNMEXPL

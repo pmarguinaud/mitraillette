@@ -14,6 +14,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHE sl2tl adiab DCMIP410 TL2249L137c1; no DFI; FullPc; GWadv; VFD                               
+
 CNMEXPL=GM_FCST_NHE_SL2_VFD_ADIAB_GWADV2_PCF_DCMIP410TL2249U
 
 TEMPLATE=$CNMEXPL

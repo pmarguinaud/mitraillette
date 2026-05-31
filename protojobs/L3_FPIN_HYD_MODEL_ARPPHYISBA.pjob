@@ -9,6 +9,8 @@
 #------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD FPOS INL; LELAM=T; CFPFMT=MODEL; IN-LINE                                                    
+
 CNMEXPL=L3_FPIN_HYD_MODEL_ARPPHYISBA
 
 TEMPLATE=$CNMEXPL

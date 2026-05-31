@@ -13,6 +13,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 601HYD euler with very simplified physics; no DFI; VFD; no SLHD                                    
+
 CNMEXPL=GM_C601_HYD_EUL_VFD_VSIPHY
 
 TEMPLATE=$CNMEXPL

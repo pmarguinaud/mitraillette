@@ -7,6 +7,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD FPOS (makes filtering matrices; input RD matrices); CFPFMT=LALON; OFF-LINE                  
+
 CNMEXPL=GM_FPMF_HYD_GPLALON_INRD
 
 TEMPLATE=$CNMEXPL

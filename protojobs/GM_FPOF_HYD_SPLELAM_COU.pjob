@@ -9,6 +9,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD FPOS; E927-NFPOS2 COU; OFF-LINE                                                             
+
 CNMEXPL=GM_FPOF_HYD_SPLELAM_COU
 
 TEMPLATE=$CNMEXPL

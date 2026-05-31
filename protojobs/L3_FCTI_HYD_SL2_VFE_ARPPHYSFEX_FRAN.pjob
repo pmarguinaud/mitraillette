@@ -16,6 +16,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl2tl (cf. oper); DFI                                                                       
+
 CNMEXPL=L3_FCTI_HYD_SL2_VFE_ARPPHYSFEX_FRAN
 
 TEMPLATE=$CNMEXPL

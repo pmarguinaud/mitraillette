@@ -17,6 +17,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHE sl2tl TL1198L105c6.4 France; no DFI; VFD; ARPPHYISBA; SI; RDbbc; ND4SYS=2                   
+
 CNMEXPL=GM_FCST_NHE_SL2_VFD_ARPPHYISBA_RDBBC2_SI_TL1198C064FR
 
 TEMPLATE=$CNMEXPL

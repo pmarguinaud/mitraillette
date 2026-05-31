@@ -13,6 +13,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 501HYD sl2tl adiab TL030L15c2.4; no DFI; VFE; SLHD                                                 
+
 CNMEXPL=GM_C501_HYD_SL2_VFE_ADIAB_SLHD_TL030S
 
 TEMPLATE=$CNMEXPL

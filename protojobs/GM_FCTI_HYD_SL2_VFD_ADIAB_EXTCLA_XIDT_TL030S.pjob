@@ -14,6 +14,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl2tl adiab TL030L15c2.4; DFI; classic extrapol; XIDT; VFD                                  
+
 CNMEXPL=GM_FCTI_HYD_SL2_VFD_ADIAB_EXTCLA_XIDT_TL030S
 
 TEMPLATE=$CNMEXPL

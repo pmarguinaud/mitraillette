@@ -6,6 +6,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: make PGD file for AROME LELAM_FRANCE                                                                    
+
 CNMEXPL=L3_PGDI_LELAM_FRANCE
 
 export DR_HOOK_NOT_MPI=1

@@ -15,6 +15,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHE sl2tl; DFI; FullPC; GWadv; ND4SYS=2; VFE                                                    
+
 CNMEXPL=L3_FCTI_NHE_SL2_VFE_ADIAB_GWADV2_PCF_FROC
 
 TEMPLATE=$CNMEXPL

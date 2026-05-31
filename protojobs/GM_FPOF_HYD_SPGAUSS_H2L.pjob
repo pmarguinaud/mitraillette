@@ -9,6 +9,8 @@
 #------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD FPOS H2L; CFPFMT=GAUSS; OFF-LINE                                                            
+
 CNMEXPL=GM_FPOF_HYD_SPGAUSS_H2L
 
 TEMPLATE=$CNMEXPL

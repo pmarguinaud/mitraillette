@@ -16,6 +16,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf IFS 001HYD sl2tl diab TCO399; no DFI; VFD; no SLHD                                                 
+
 CNMEXPL=GE_FCST_HYD_SL2_VFD_ECPHY_SI_TCO399
 
 TEMPLATE=$CNMEXPL

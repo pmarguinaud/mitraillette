@@ -15,6 +15,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHQ sl2tl; DFI; CheapPC; GWadv; ND4SYS=2; VFD                                                   
+
 CNMEXPL=L3_FCTI_NHQ_SL2_VFD_ADIAB_GWADV2_PCC_FROC
 
 TEMPLATE=$CNMEXPL

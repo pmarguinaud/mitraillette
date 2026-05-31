@@ -8,6 +8,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 923; domain=ARP METROPOLE TL798c2.4; without SURFEX                                                
+
 CNMEXPL=GM_C923_TL798S
 
 TEMPLATE=$CNMEXPL

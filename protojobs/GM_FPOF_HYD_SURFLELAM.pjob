@@ -8,6 +8,8 @@
 #------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD FPOS; LAMARS; LELAM=F; CFPFMT=LELAM; C+I+E; OFF-LINE                                        
+
 CNMEXPL=GM_FPOF_HYD_SURFLELAM
 
 TEMPLATE=$CNMEXPL

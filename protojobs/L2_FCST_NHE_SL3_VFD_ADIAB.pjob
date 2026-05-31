@@ -13,6 +13,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHE-2D sl3tl; no DFI; SI; VFD                                                                   
+
 CNMEXPL=L2_FCST_NHE_SL3_VFD_ADIAB
 
 TEMPLATE=$CNMEXPL

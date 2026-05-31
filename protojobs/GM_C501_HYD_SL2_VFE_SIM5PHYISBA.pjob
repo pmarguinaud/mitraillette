@@ -13,6 +13,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 501HYD sl2tl with simplified physics TL107L70c1; no DFI; VFE; no SLHD                              
+
 CNMEXPL=GM_C501_HYD_SL2_VFE_SIM5PHYISBA
 
 TEMPLATE=$CNMEXPL

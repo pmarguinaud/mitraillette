@@ -8,6 +8,8 @@
 #------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHE FPOS 5 domains; CFPFMT=LALON; OFF-LINE                                                      
+
 CNMEXPL=GM_FPOF_NHE_GPLALON_ARPPHYISBA
 
 TEMPLATE=$CNMEXPL

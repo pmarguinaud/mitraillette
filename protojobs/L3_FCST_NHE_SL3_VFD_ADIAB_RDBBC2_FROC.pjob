@@ -15,6 +15,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHE sl3tl; no DFI; SI; RDbbc; VFD                                                               
+
 CNMEXPL=L3_FCST_NHE_SL3_VFD_ADIAB_RDBBC2_FROC
 
 TEMPLATE=$CNMEXPL

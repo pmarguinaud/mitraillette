@@ -12,6 +12,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD FPOS; change set of vertical levels; OFF-LINE                                               
+
 CNMEXPL=GM_FPOF_HYD_MODEL_CHANGELEVELS
 
 TEMPLATE=$CNMEXPL

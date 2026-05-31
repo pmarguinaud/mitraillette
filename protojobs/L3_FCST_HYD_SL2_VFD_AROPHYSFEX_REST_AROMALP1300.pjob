@@ -17,6 +17,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl2tl (cf. AROME); no DFI; SI with SETTLS; restart                                          
+
 CNMEXPL=L3_FCST_HYD_SL2_VFD_AROPHYSFEX_REST_AROMALP1300
 
 TEMPLATE=$CNMEXPL

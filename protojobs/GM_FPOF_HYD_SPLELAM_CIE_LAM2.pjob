@@ -8,6 +8,8 @@
 #------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 903HYD FPOS; LAM2=E927; LELAM=F; CFPFMT=LELAM; C+I+E; OFF-LINE                                     
+
 CNMEXPL=GM_FPOF_HYD_SPLELAM_CIE_LAM2
 
 TEMPLATE=$CNMEXPL

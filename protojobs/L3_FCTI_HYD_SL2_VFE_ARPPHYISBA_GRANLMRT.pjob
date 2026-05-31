@@ -16,6 +16,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl2tl (rot. Mercator GRANLMRT); DFI                                                         
+
 CNMEXPL=L3_FCTI_HYD_SL2_VFE_ARPPHYISBA_GRANLMRT
 
 TEMPLATE=$CNMEXPL

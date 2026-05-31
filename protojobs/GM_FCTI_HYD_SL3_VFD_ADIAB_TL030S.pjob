@@ -13,6 +13,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl3tl adiab TL030L15c2.4; DFI                                                               
+
 CNMEXPL=GM_FCTI_HYD_SL3_VFD_ADIAB_TL030S
 
 TEMPLATE=$CNMEXPL

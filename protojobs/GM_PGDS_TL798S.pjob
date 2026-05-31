@@ -7,6 +7,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: make PGD-S file for ARPEGE TL798c2.4                                                                    
+
 CNMEXPL=GM_PGDS_TL798S
 
 export DR_HOOK_NOT_MPI=1

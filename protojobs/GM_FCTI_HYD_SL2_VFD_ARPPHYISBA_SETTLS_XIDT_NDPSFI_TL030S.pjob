@@ -16,6 +16,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl2tl diab TL030L15c2.4; DFI; SETTLS; XIDT; VFD; NDPSFI=1                                   
+
 CNMEXPL=GM_FCTI_HYD_SL2_VFD_ARPPHYISBA_SETTLS_XIDT_NDPSFI_TL030S
 
 TEMPLATE=$CNMEXPL

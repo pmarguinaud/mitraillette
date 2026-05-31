@@ -13,6 +13,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 401HYD euler adiab TL031L15c1; no DFI; VFD; no SLHD                                                
+
 CNMEXPL=GM_C401_HYD_EUL_VFD_ADIAB_TL031U
 
 TEMPLATE=$CNMEXPL

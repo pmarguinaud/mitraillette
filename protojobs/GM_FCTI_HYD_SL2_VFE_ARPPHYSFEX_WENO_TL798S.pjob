@@ -18,6 +18,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl2tl TL798L90c2.4; DFI; ARPPHYSFEX; Standard Legendre transforms; WENO                     
+
 CNMEXPL=GM_FCTI_HYD_SL2_VFE_ARPPHYSFEX_WENO_TL798S
 
 TEMPLATE=$CNMEXPL

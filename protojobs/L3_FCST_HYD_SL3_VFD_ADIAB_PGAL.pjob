@@ -14,6 +14,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl3tl; no DFI; VFD; no SLHD                                                                 
+
 CNMEXPL=L3_FCST_HYD_SL3_VFD_ADIAB_PGAL
 
 TEMPLATE=$CNMEXPL

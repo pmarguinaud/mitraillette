@@ -13,6 +13,8 @@
 #------------------------------------------------------------------
 #==================================================================
 
+# MITRAILLE COMMENT: Conf 001HYD-1D sl2tl with AROME physics; VFD                                                            
+
 CNMEXPL=L1_FCST_HYD_SL2_VFD_AROPHY1D
 
 TEMPLATE=$CNMEXPL

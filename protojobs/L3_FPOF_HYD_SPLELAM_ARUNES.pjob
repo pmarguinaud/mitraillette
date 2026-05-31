@@ -9,6 +9,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD EE927-NFPOS2 ARUNES                                                                         
+
 CNMEXPL=L3_FPOF_HYD_SPLELAM_ARUNES
 
 TEMPLATE=$CNMEXPL

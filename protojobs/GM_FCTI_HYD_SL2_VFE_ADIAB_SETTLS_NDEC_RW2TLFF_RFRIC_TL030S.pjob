@@ -14,6 +14,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl2tl adiab TL030L15c2.4; DFI; SETTLS; VFE; RW2TLFF=1; RFRIC                                
+
 CNMEXPL=GM_FCTI_HYD_SL2_VFE_ADIAB_SETTLS_NDEC_RW2TLFF_RFRIC_TL030S
 
 TEMPLATE=$CNMEXPL

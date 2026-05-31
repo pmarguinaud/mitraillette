@@ -5,6 +5,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Make reduced Gaussian grids                                                                             
+
 CNMEXPL=GM_RGRI
 
 TEMPLATE=$CNMEXPL

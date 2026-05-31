@@ -7,6 +7,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: convert PGD LFI to FA for ARPEGE TL798c2.4                                                              
+
 CNMEXPL=GM_PGDC_TL798S
 
 export DR_HOOK_NOT_MPI=1

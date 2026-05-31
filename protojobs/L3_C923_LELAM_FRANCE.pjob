@@ -8,6 +8,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf E923; make clim LELAM_FRANCE                                                                       
+
 CNMEXPL=L3_C923_LELAM_FRANCE
 
 TEMPLATE=$CNMEXPL

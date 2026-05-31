@@ -14,6 +14,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 401HYD euler; no DFI; VFD; no SLHD                                                                 
+
 CNMEXPL=L3_C401_HYD_EUL_VFD_ADIAB_PGAL
 
 TEMPLATE=$CNMEXPL

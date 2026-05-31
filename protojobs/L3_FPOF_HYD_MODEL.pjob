@@ -8,6 +8,8 @@
 #------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 903HYD FPOS MOD; LELAM=T; CFPFMT=MODEL; OFF-LINE                                                   
+
 CNMEXPL=L3_FPOF_HYD_MODEL
 
 TEMPLATE=$CNMEXPL

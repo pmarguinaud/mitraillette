@@ -9,6 +9,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 923; make clim with SURFEX for ARPEGE TL798c2.4                                                    
+
 CNMEXPL=GM_C923_SFEX_TL798S
 
 TEMPLATE=$CNMEXPL

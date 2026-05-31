@@ -17,6 +17,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHQ sl2tl (cf. AROME); no DFI; CheapPC with NESC; GWadv; ND4SYS=2                               
+
 CNMEXPL=L3_FCST_NHQ_SL2_VFD_AROPHYSFEX_GWADV2_PCC_AROMALP1300
 
 TEMPLATE=$CNMEXPL

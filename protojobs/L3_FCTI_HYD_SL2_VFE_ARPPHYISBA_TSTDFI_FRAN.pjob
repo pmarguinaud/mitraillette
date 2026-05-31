@@ -23,6 +23,8 @@
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl2tl (IDFI test); DFI                                                                      
+
 CNMEXPL=L3_FCTI_HYD_SL2_VFE_ARPPHYISBA_TSTDFI_FRAN
 
 TEMPLATE=$CNMEXPL

@@ -13,6 +13,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHE-2D euler; no DFI; SI; VFD                                                                   
+
 CNMEXPL=L2_FCST_NHE_EUL_VFD_ADIAB
 
 TEMPLATE=$CNMEXPL

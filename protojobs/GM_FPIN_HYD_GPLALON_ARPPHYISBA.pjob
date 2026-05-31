@@ -9,6 +9,8 @@
 #------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD FPOS 5 domains; CFPFMT=LALON; IN-LINE                                                       
+
 CNMEXPL=GM_FPIN_HYD_GPLALON_ARPPHYISBA
 
 TEMPLATE=$CNMEXPL

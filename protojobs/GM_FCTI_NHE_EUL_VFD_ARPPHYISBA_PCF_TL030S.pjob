@@ -16,6 +16,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001NHE euler diab TL030L15c2.4; DFI; FullPc; VFD                                                   
+
 CNMEXPL=GM_FCTI_NHE_EUL_VFD_ARPPHYISBA_PCF_TL030S
 
 TEMPLATE=$CNMEXPL
