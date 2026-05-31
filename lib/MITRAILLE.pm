@@ -44,6 +44,7 @@ sub getprofil
 {
   my %args = @_;
   my $job_name = $args{job_name};
+  $job_name =~ s/\.pjob$//o;
   my $profil_table = $args{profil_table};
   if (exists $profil_table->{$job_name})
     {
@@ -234,16 +235,17 @@ BASTA
   #---------------------------------------------------------------------------------------------------------
 
   my %PROFIL_TABLE;
-  my $profil_file = "$args{ref_jobsdir}/$args{station}/profil_table";
+  my $profil_file = "$args{ref_jobsdir}/$args{station}/profil_table.csv";
   (my $pf = 'FileHandle'->new ("<$profil_file"))
     or die ("Cannot open `$profil_file'");
   while (<$pf>)
     {
       chomp;
-      next if (/^\s*#/o || /^\s*$/o);
-      my @cols = split (/\s+/o, $_);
+      next if (/^\s*#/o || /^\s*$/o || /^job_name;/o);
+      my @cols = split (/;/o, $_);
       shift @cols while (@cols && $cols[0] eq '');
       next unless (@cols >= 6);
+      s/^\s+|\s+$//go for (@cols);
       my $job_name = $cols[0];
       my $walltime = $cols[1];
       my $nproc_io = $cols[2];
