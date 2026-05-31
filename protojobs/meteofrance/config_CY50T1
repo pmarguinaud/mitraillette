@@ -2,17 +2,11 @@
 # Mitraillette configuration file for BELENOS (V102025)
 #
 
-#unchained jobs or not?
-MIT_UNCHAINED_JOB="__mit_unchained_job__"
-
 # where the io_serv tools are
 IO_SERV_TOOLS_DIR=__mit_install_dir__/io_serv_tools
 
 # Where to store the output files
 WORKDIR=/scratch/work/${USER}
-
-# Where to put your modified job* files, i.e. the chain-files
-# MITRA_HOME is defined in mitraillette.x as your pwd
 
 if [ "x$STARTTIME" != "x" ]
 then

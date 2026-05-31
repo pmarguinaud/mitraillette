@@ -489,8 +489,6 @@ set -x
 ls -l
 
 
-#      Launch the following job
 
 cd __mitra_home__
-[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
 echo "@@ `date`"
