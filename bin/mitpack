@@ -872,7 +872,7 @@ sub generateProFile
 
   for my $job (@list)
     {
-      next unless ($job =~ m/^(?:L3_|GM_|IFS_|GE_)/o);
+      next unless ($job =~ m/^(?:L1_|L2_|L3_|GM_|IFS_|GE_)/o);
       $fh->printf ("%-80s %s\n", $job, $MASTERODB);
     }
 
