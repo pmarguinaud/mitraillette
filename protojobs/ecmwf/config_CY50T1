@@ -8,7 +8,7 @@ trap 'echo "CANCELLED"; showslurminfo ; exit 1' TERM
 set -x
 
 #
-# Mitraillette configuration file for ecmwf cluster
+# Mitraillette configuration file for ECMWF cluster
 #
 
 # where the io_serv tools are

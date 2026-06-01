@@ -1,5 +1,11 @@
-set -x
+
 set -e
+set -E
+
+trap 'echo "FAILED at line $LINENO" ; showslurminfo ; exit 1' ERR
+trap 'echo "CANCELLED"; showslurminfo ; exit 1' TERM
+
+set -x
 
 #
 # Mitraillette configuration file for BELENOS (V102025)
@@ -34,11 +40,9 @@ else
 exit 1
 fi
 
-AMHOME=/home/gmap/mrpe/mary
-AMWORKDIR=/scratch/work/mary
 GCOHOME=/home/mf/dp/marp/gco
-INPUTFILES_HOME=${KYHOME} ## ?????? must become ${AMHOME}
-INPUTFILES_WORKDIR=${KYWORKDIR} ## ?????? must become ${AMWORKDIR}
+INPUTFILES_HOME=${KYHOME} 
+INPUTFILES_WORKDIR=${KYWORKDIR} 
 # - for regular validation
 FILE_PATH=${INPUTFILES_HOME}/anal_mitraille
 FILE_PATH_DILA=${INPUTFILES_HOME}/dila
@@ -130,6 +134,16 @@ function mpilaunch
     --  -nn $NNODE_IO -nnp $NTASK_IO -openmp $NOPMP_IO -- $* 
 }
 
+function showslurminfo
+{
+if [ "x$STARTTIME" != "x" ]
+then
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages --starttime $STARTTIME
+else
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages
+fi
+}
+
 # xpnam
 XPNAM=${GCOHOME}/public/bin/xpnam
 
@@ -140,22 +154,13 @@ NCOMBFLEN=1800000
 MP_TYPE=2
 
 # BULL specific environment variables
-
 ulimit -s unlimited
 module purge
-
-# module without perfect reproductibilty for some oper conf.
-#module load intel/2018.5.274 intelmpi/2018.4.274    
 
 #Oper settings for Intel MKL library
 # variables for perfect reproductibilty for some oper conf.
 export MKL_CBWR=AUTO,STRICT
 export MKL_DEBUG_CPU_TYPE=5
-
-
-# used only before compilator release 2023
-#module load intel/2018.5.274_mkl_nightly_2019u2 intelmpi/2018.4.274
-#
 
 export OMP_STACKSIZE=4G
 export KMP_STACKSIZE=4G
