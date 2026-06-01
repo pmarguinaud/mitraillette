@@ -2,8 +2,8 @@
 set -e
 set -E
 
-trap 'echo "FAILED at line $LINENO"; exit 1' ERR
-trap 'echo "CANCELLED"; exit 1' TERM
+trap 'echo "FAILED at line $LINENO" ; showslurminfo ; exit 1' ERR
+trap 'echo "CANCELLED"; showslurminfo ; exit 1' TERM
 
 set -x
 
@@ -118,6 +118,16 @@ function mpilaunch
     --verbose --wrap --wrap-stdeo \
         -nn $NNODE_FC -nnp $NTASK_FC -openmp $NOPMP_FC -- $* \
     --  -nn $NNODE_IO -nnp $NTASK_IO -openmp $NOPMP_IO -- $* 
+}
+
+function showslurminfo
+{
+if [ "x$STARTTIME" != "x" ]
+then
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages --starttime $STARTTIME
+else
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages
+fi
 }
 
 # xpnam

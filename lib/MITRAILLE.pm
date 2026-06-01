@@ -77,16 +77,29 @@ sub set_job
   my $build = $args{build} // '';
 
   my $JOB = &getjob (%args);
-  my $prof = &getprofil (%args);
+
+  my $content = &read_file ($JOB);
+
+  my ($prof, $time) = ($content =~ m/PROFILE\s*=\s*(\S+)\s*,\s*TIME\s*=\s*(\d+)m?/goms);
+
+  if ($prof && $time)
+    {
+      $prof = &getprofil (%args, job_name => $prof);
+      $prof->{walltime} = $time;
+    }
+  else
+    {
+      die $job_name;
+    }
 
   my $NBNODES = $prof->{nnode_fc} + $prof->{nnode_io};
 
   my $cjob_file = "$args{job_dir}/${code_name}.cjob";
-  my $content = &read_file ("$args{ref_jobsdir}/$args{station}/multiheader")
-              . "export STATION=$args{station}\n"
-              . &read_file ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
-              . &read_file ($JOB)
-              . &read_file ("$args{ref_jobsdir}/$args{station}/jobtrailer");
+  $content = &read_file ("$args{ref_jobsdir}/$args{station}/multiheader")
+           . "export STATION=$args{station}\n"
+           . &read_file ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
+           . $content
+           . &read_file ("$args{ref_jobsdir}/$args{station}/jobtrailer");
 
   my $nam_path_plain = "$args{ref_namdir}/$args{cycle_lc}";
   my $mitra_home_plain = $args{mitra_home};
