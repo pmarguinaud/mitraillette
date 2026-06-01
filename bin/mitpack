@@ -236,7 +236,17 @@ sub aggregate
           {
             chmod (0755, $job->{file});
             (my $output = $job->{output}) =~ s/%j/\$SLURM_JOBID/o;
-            $fh->print ("sleep 2; STARTTIME=\$(date +%Y-%m-%dT%H:%M:%S) ./$job->{file} > $output 2>&1\n\n");
+            (my $CNMEXPL = $job->{file}) =~ s/\.cjob$//o;
+            $fh->print ("echo \"CNMEXPL=$CNMEXPL\" > $output\n\n");
+          }
+  
+        $fh->print ("\n" x 2);
+  
+        for my $job (@job)
+          {
+            chmod (0755, $job->{file});
+            (my $output = $job->{output}) =~ s/%j/\$SLURM_JOBID/o;
+            $fh->print ("sleep 2; STARTTIME=\$(date +%Y-%m-%dT%H:%M:%S) timeout --signal=TERM $job->{time}m ./$job->{file} > $output 2>&1\n\n");
           }
   
         $fh->close ();
@@ -879,7 +889,7 @@ sub createMitrailletteTestCase
   my @test0 = map { &basename ($_) } <$dir/*>;
   my %test0 = map { ($_, 1) } @test0;
   
-  &runMitrailleCommand (env => {BUILD => $build->getPath ()}, command => ['./bin/mitraillette.pl', $args{version}, &basename ($pro_file)], %args);
+  &runMitrailleCommand (env => {BUILD => $build->getInstallPath ()}, command => ['./bin/mitraillette.pl', $args{version}, &basename ($pro_file)], %args);
   
   my @test1 = map { &basename ($_) } <$dir/*>;
   my ($mitraillette) = grep { ! $test0{$_} } @test1;
@@ -1026,7 +1036,7 @@ EOF
     }
 
   my ($CNMEXPL) = ($text =~ m/CNMEXPL=(\w+)/goms);
-  $CNMEXPL or die ($o);
+  $CNMEXPL or return {status => 'UNKNOWN', CNMEXPL => '?'};
 
   my ($status) = ($text =~ m/(Command exited with non-zero status|Process received signal|mpirun detected that one or more processes exited with non-zero status|ABOR1|ABORT!|FAILED|SIGSEGV|CANCELLED|forrtl: severe|BAD TERMINATION|SPECTRAL NORMS[^\n]*NaN|Cannot access ..\/(?:MASTERODB|ARPEXE).)/goms);
 

@@ -1,3 +1,6 @@
+
+#PROFILE = tiny-manycore, TIME = 20
+
 #============================================================
 #------------------------------------------------------------
 # Configuration 923 (make climatologies without SURFEX)
