@@ -27,9 +27,9 @@ sub getjob
 {
   my %args = @_;
   my $job_name = $args{job_name};
-  if (-f "$args{mitra_home}/$args{cycle_lc}/$job_name")
+  if (-f "$args{mit_install_dir}/$args{cycle_lc}/$job_name")
     {
-      return "$args{mitra_home}/$args{cycle_lc}/$job_name";
+      return "$args{mit_install_dir}/$args{cycle_lc}/$job_name";
     }
   else
     {
@@ -102,7 +102,6 @@ sub set_job
            . &read_file ("$args{ref_jobsdir}/$args{station}/jobtrailer");
 
   my $nam_path_plain = "$args{ref_namdir}/$args{cycle_lc}";
-  my $mitra_home_plain = $args{mitra_home};
   my $mit_install_dir = $args{mit_install_dir} // '';
 
   for ($content)
@@ -124,7 +123,7 @@ sub set_job
       s/__my_own_pack__/${build}/go;
       s/__nam_path__/${nam_path_plain}/go;
       s/__mitra_pid__/$args{mitra_pid}/go;
-      s/__mitra_home__/${mitra_home_plain}/go;
+      s/__mitra_home__/${mit_install_dir}/go;
       s/__mit_install_dir__/${mit_install_dir}/go;
     }
 
@@ -142,11 +141,12 @@ sub run
 {
   my %args = @_;
 
-  $args{mitra_home} = cwd ();
+  $args{mit_install_dir} ||= $ENV{MIT_INSTALL_DIR};
+  $args{station}         ||= $ENV{STATION};
+
   $args{ref_jobsdir} = "$args{mit_install_dir}/protojobs";
   $args{ref_namdir} = "$args{mit_install_dir}/namelist";
   $args{cycle_lc} = lc ($args{cycle});
-  $args{local_dir} = cwd ();
 
   #---------------------------------------------------------------------------------------------------------
   # 1. MITRA_PID handling (read ~/.mitrc, increment, etc.)
@@ -222,13 +222,9 @@ BASTA
     {
       die ("PRO_FILE must be provided\n");
     }
-  if ($args{local_dir} ne $args{mitra_home})
+  if (! -d "$args{mit_install_dir}/$args{cycle_lc}")
     {
-      die ("Please run from \$MITRA_HOME ($args{mitra_home}), not $args{local_dir}\n");
-    }
-  if (! -d "$args{local_dir}/$args{cycle_lc}")
-    {
-      die ("Cycle directory does not exist: $args{local_dir}/$args{cycle_lc}\n");
+      mkdir ("$args{mit_install_dir}/$args{cycle_lc}");
     }
   if (! -f $args{pro_file})
     {
@@ -279,7 +275,7 @@ BASTA
   # 4. Initialisations
   #---------------------------------------------------------------------------------------------------------
 
-  $args{job_dir} = "$args{mitra_home}/$args{cycle_lc}/mitraille_$args{mitra_pid}";
+  $args{job_dir} = "$args{mit_install_dir}/$args{cycle_lc}/mitraille_$args{mitra_pid}";
 
   mkdir ($args{job_dir}) if (! -d $args{job_dir});
 
@@ -287,8 +283,8 @@ BASTA
   # 5. Process PRO_FILE and generate jobs
   #---------------------------------------------------------------------------------------------------------
 
-  (my $proffh = 'FileHandle'->new ("<$args{mitra_home}/$args{pro_file}"))
-    or die ("Cannot open `$args{mitra_home}/$args{pro_file}'");
+  (my $proffh = 'FileHandle'->new ("<$args{pro_file}"))
+    or die ("Cannot open `$args{pro_file}'");
   while (<$proffh>)
     {
       chomp;
