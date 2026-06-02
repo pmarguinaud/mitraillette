@@ -1,4 +1,4 @@
-package mitraille;
+package mitraille::generate;
 
 use strict;
 
