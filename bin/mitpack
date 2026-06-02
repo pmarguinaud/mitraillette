@@ -92,680 +92,9 @@ pmarguinaud@hotmail.com
 
 =cut
 
-package bt;
+use FindBin qw ($Bin);
+use lib "$Bin/../lib";
 
-use strict;
-
-sub bt
-{ 
-  print @_;
-
-  print "\n";
-  for (my $i = 0; ; $i++)
-    {
-      last unless (my @call = caller ($i));
-      print " $i ", $call[1], ':', $call[2], "\n";
-    }
-  die "\n";
-}
-
-$SIG{__WARN__} = \&bt;
-$SIG{__DIE__} = \&bt;
-
-package aggregate;
-
-use strict;
-
-use FileHandle;
-use Data::Dumper;
-use Storable;
-
-use strict;
-
-sub slurpl
-{
-  my $f = shift;
-  my @x = do { my $fh = 'FileHandle'->new ("<$f"); <$fh> };
-  chomp for (@x);
-  return @x;
-}
-
-sub header
-{
-  my $f = shift;
-
-  my @sbatch = grep { s/^#SBATCH\s+//o } &slurpl ($f);
-
-  my %h;
-
-  for (@sbatch)
-    {
-      s/\s*$//o;
-      next if (m/^--job-name=/o);
-      next if (m/^-J/o);
-
-      if (m/^(--\S+)=(.*)$/o)
-        {
-          $h{$1} = $2;
-        }
-      elsif (m/^(--?\S+)\s+(\S.*)$/o)
-        {
-          $h{$1} = $2;
-        }
-      elsif (m/^(-\S+)$/o)
-        {
-          $h{$1} = '__FLAG__';
-        }
-    }  
-
-  for (values (%h))
-    {
-      s/^"//o;
-      s/"$//o;
-    }
-
-  return \%h;
-}
-
-sub aggregate
-{
-  my $max = shift; # Max time in minutes
-
-  my @cjob = @_;
-
-  return @cjob unless ($max > 0);
-
-  local $Storable::canonical = 1;
-  
-  my (%j, %h);
-  
-  for my $f (@cjob)
-    {
-      my $h = &header ($f);
-  
-      my $time = delete $h->{'--time'};
-      my $o = delete $h->{'-o'};
-  
-      my $sign = &Storable::freeze ($h);
-
-      push @{ $j{$sign} }, {file => $f, time => $time, output => $o};
-      $h{$sign} = $h;
-    }
-
-  my @sh;
-  
-  my $count = 0;
-
-  for my $sign (sort { $h{$b}{'--nodes'} <=> $h{$a}{'--nodes'} } keys (%j))
-    {
-      my $h = $h{$sign};
-
-      my $time = 0;
-  
-      my @job;
-
-      my $dump = sub
-      {
-        return unless (@job);
-
-        push @sh, (my $sh = sprintf ('mit.%6.6d.sh', $count++));
-
-        my $fh = 'FileHandle'->new (">$sh");
-        
-        $fh->print ("#!/bin/bash\n");
-
-        for my $attr (sort keys (%$h))
-          {
-            if ($attr eq '-J') { }
-            if ($attr eq '--job-name') { }
-            elsif ($h->{$attr} eq '__FLAG__')
-              {
-                $fh->print ("#SBATCH $attr\n");
-              }
-            else
-              {
-                $fh->print ("#SBATCH $attr $h->{$attr}\n");
-              }
-          }
-        $fh->print ("#SBATCH --time $time\n");
-        $fh->print ("#SBATCH -o /dev/null\n");
-  
-        $fh->print ("\n" x 2);
-  
-        for my $job (@job)
-          {
-            chmod (0755, $job->{file});
-            (my $output = $job->{output}) =~ s/%j/\$SLURM_JOBID/o;
-            (my $CNMEXPL = $job->{file}) =~ s/\.cjob$//o;
-            $fh->print ("echo \"CNMEXPL=$CNMEXPL\" > $output\n\n");
-          }
-  
-        $fh->print ("\n" x 2);
-  
-        for my $job (@job)
-          {
-            chmod (0755, $job->{file});
-            (my $output = $job->{output}) =~ s/%j/\$SLURM_JOBID/o;
-            $fh->print ("sleep 2; STARTTIME=\$(date +%Y-%m-%dT%H:%M:%S) timeout --signal=TERM $job->{time}m ./$job->{file} > $output 2>&1\n\n");
-          }
-  
-        $fh->close ();
-  
-        $time = 0; 
-        @job = ();
-      };
-  
-      for my $job (@{ $j{$sign} })
-        {
-
-          if ($time + $job->{'time'} > $max)
-            {
-              $dump->();
-            }
-
-          $time += $job->{'time'};
-  
-          push @job, $job;
-
-        }
-
-      $dump->();
-  
-    }
-
-  return @sh;
-}
-
-package build;
-
-use strict;
-use Cwd;
-
-sub new
-{
-  my $class = shift;
-  my %args = @_;
-
-  $args{path} ||= &cwd ();
-
-  if ($class eq __PACKAGE__)
-    {
-      if (-f "$args{path}/.genesis")
-        {
-          $class = 'build::pack';
-        }
-      elsif (-f "$args{path}/build/install_manifest.txt")
-        {
-          $class = 'build::cmake';
-        }
-      else
-        {
-          return;
-        }
-    }
-  else
-    {
-      return bless \%args, $class;
-    }
-  
-  return $class->new (%args);
-}
-
-sub getPath
-{
-  my $self = shift;
-  return $self->{path};
-}
-
-package build::pack;
-
-use File::Basename;
-
-use strict;
-
-our @ISA = qw (build);
-
-sub getExecutablePath
-{
-  my ($self, $exec) = @_;
-  return "$self->{path}/bin/$exec";
-}
-
-sub getLabel 
-{
-  my $self = shift;
-  return &basename ($self->{path});
-}
-
-sub slurp
-{
-  my $f = shift;
-  (my $fh = 'FileHandle'->new ("<$f")) or die ("Cannot open `$f'");
-  local $/ =  undef; 
-  my $text = <$fh>;
-  return $text;
-}
-
-sub getGenesis
-{
-  my $self = shift;
-  die unless (-f "$self->{path}/.genesis");
-  chomp (my $genesis = &slurp ("$self->{path}/.genesis"));
-  my @genesis = split (m/\s+/o, $genesis);
-  return @genesis;
-}
-
-sub getCycle
-{
-  my $self = shift;
-  my @genesis = $self->getGenesis ();
-  for my $i (0 .. $#genesis)
-    {
-      return $genesis[$i+1] if ($genesis[$i] eq '-r');
-    }
-}
-
-sub getVersion
-{
-  my $self = shift;
-  my $cycle = $self->getCycle ();
-
-  my %cycle2version =
-  (
-    '49t1' => 'CY49T1',
-    '50'   => 'CY50',
-  );
-
-  return $cycle2version{$cycle};
-}
-
-sub getInstallPath
-{
-  my $self = shift;
-  return $self->{path};
-}
-
-package build::cmake;
-
-use File::Basename;
-use Data::Dumper;
-
-use strict;
-
-our @ISA = qw (build);
-
-sub getExecutablePath
-{
-  my ($self, $exec) = @_;
-
-  if ($self->{executablePath}{$exec})
-    {
-      return $self->{executablePath}{$exec};
-    }
-
-  my @install = do { my $fh = 'FileHandle'->new ("<$self->{path}/build/install_manifest.txt"); <$fh> };
-  chomp for (@install);
-
-  for my $path (@install)
-    {
-      if ($exec eq &basename ($path))
-        {
-          $self->{executablePath}{$exec} = $path;
-          return $path;
-        }
-    }
-
-  die ("Executable $exec was not found in $self->{path}");
-}
-
-sub getInstallPath
-{
-  my $self = shift;
-  my $path = $self->getExecutablePath ('MASTERODB');
-
-  for (1 .. 2)
-    {
-      $path = &dirname ($path);
-    }
- 
-  return $path;
-}
-
-sub getLabel
-{
-  my $self = shift;
-
-  my @cmd = ('git', -C => $self->{path}, qw (branch --show-current));
-
-  my $branch = `@cmd`;
-
-  return $branch unless ($?);
-
-  return &basename ($self->{path});
-}
-
-sub getVersion
-{
-  my $self = shift;
-  return undef;
-}
-
-package node;
-
-use strict;
-
-use FileHandle;
-use Data::Dumper;
-
-my @spnorms = ("VORTICITY", "DIVERGENCE", "TEMPERATURE", "KINETIC ENERGY");
-
-sub xave
-{
-  my $f = shift;
-  my $fh = 'FileHandle'->new ("<$f");
-
-  $fh or die ("Cannot open $f\n");
-
-  my @gpregs;
-
-
-  my @line = <$fh>;
-  my @x;
-  MAIN: while (defined (my $line = shift (@line)))
-    {
-      AGAIN:
-
-#  GPNORMS OF FIELDS TO BE WRITTEN OUT ON FILE :
-#                                    AVERAGE               MINIMUM               MAXIMUM
-#  PROFTEMPERATURE  : 0.291195674511515E+03 0.201887381812149E+03 0.315847778487033E+03
-
-      if ($line =~ s/^\s*SPECTRAL\s+NORMS\s+-\s+LOG\(PREHYDS\)\s+(\S+)//o)
-        {
-          my $LOG_PREHYDS = $1;
-
-          push @x, [LOG_PREHYDS => $LOG_PREHYDS];
-
-          AGAIN_SPNORMS:
-
-          goto AGAIN
-            unless (($line = shift (@line)) =~ s/^\s+LEV\s+//o);
-
-          my %index;
-          %index = ();
-          for my $spnorm (@spnorms)
-            {
-              my $index = index ($line, $spnorm);
-              $index{$spnorm} = $index 
-                if ($index >= 0);
-            }
-
-          my @spnormk = sort { $index{$a} <=> $index{$b} } 
-                        grep { defined $index{$_} } 
-                        @spnorms;
-
-          goto AGAIN
-            unless (($line = shift (@line)) =~ s/^\s+AVE\s+//o);
-
-          my @spnormv = split (m/\s+/o, $line);
-
-          while (@spnormk)
-            {
-              my $spnormk = shift (@spnormk);
-              my $spnormv = shift (@spnormv);
-              die ("$spnormk, $spnormv\n")
-                unless (defined ($spnormk) && defined ($spnormv));
-              push @x, [ $spnormk, $spnormv ];
-            }
-
-          goto AGAIN_SPNORMS;
-
-        }
-    }
-
-  return @x;
-}
-
-my $INF = 999**999;
-
-sub digitdiff
-{
-  my ($x1, $x2) = @_;
-  return $INF if ($x1 == $x2);
-  return - log (abs ($x1 - $x2)) / log (10);
-}
-
-my @find = qw (TEMPERATURE VORTICITY DIVERGENCE);
-
-sub fields
-{
-  return @find;
-}
-
-sub diff
-{
-  my ($f1, $f2) = @_;
-
-  my @fx1 = &xave ($f1);
-  my @fx2 = &xave ($f2);
-
-  my @x = ([]);
-  
-  my $diff = 0;
-
-  my %mind; # Minimum number of common digits
-  for (@find)
-    {
-      $mind{$_} = $INF;
-    }
-  
-  while (defined (my $fx1 = shift (@fx1)) && defined (my $fx2 = shift (@fx2)))
-    {
-      my ($f1, $x1) = @$fx1;
-      my ($f2, $x2) = @$fx2;
-  
-      die ("Field mismatch $f1 != $f2\n")
-        unless ($f1 eq $f2);
-  
-      chomp ($x1); chomp ($x2);
-
-      if (($x1 !~ m/^\s*$/o) && ($x2 !~ m/^\s*$/o))
-        {
-          for ($x1, $x2)
-            {
-              s/(\d)([+-]\d+)$/$1E$2/o;
-            }
-          my $dx = $x1 - $x2;
-  
-          my $sdx = sprintf ('%17.9e', $dx);
-  
-          $dx = $sdx; $dx = $dx + 0.;
-  
-          push @{$x[-1]},
-            sprintf (" | %-20s | %17.9e  |  %17.9e  |  %17s  | \n", $f1, $x1, $x2, $sdx);
-  
-          $diff++ if ($dx);
-
-          my $dd = &digitdiff ($x1, $x2);
-
-          if ($mind{$f1})
-            {
-              $mind{$f1} = $dd if ($dd < $mind{$f1});
-            }
-        }
-      else
-        {
-          push @x, [];
-        }
-    }
-
-  my @mind = map { sprintf ('%5.2f', $mind{$_}) } @find;
-
-  return $diff ? (@mind) : ();
-}
-
-package printer;
-
-use strict;
-
-sub new
-{
-  my $class = shift;
-  my $self = bless {count => 0, @_}, $class;
-  
-  $self->{fhout} ||= \*STDOUT;
-
-  unless (-t $self->{fhout})
-    {
-      $self->{color} = 0;
-    }
-
-  return $self;
-}
-
-sub center
-{
-  my ($s, $n) = @_; 
-  my $i = 0;
-  while (length ($s) < $n) 
-    {   
-      $s = $i % 2 ? " $s" : "$s ";
-      $i++;
-    }   
-  return $s; 
-}
-
-sub colored
-{
-  my ($self, $color, $text) = @_;
-  return $text;
-}
-
-sub separator
-{
-  return "   ";
-}
-
-sub line
-{
-  my $self = shift;
-
-  my @len = @{ $self->{length} };
-  my @jus = @{ $self->{justify} };
-
-  my $col = 0;
-
-  my $line = '';
-
-  my $separator = $self->separator ();
-
-  for (my $i = 0; $i <= $#_; $i++)
-    {
-      $line .= $separator;
-
-      my $color = '';
-      if ($_[$i] =~ m{^<(.*)>$}goms)
-        {
-          $color = $1;
-          $i++;
-        }
-      my $str = $_[$i];
-
-      my ($jus, $len) = ($jus[$col], $len[$col]);
-
-      if ($jus && $len)
-        {
-          if ($jus eq 'center')
-            {
-              $str = &center ($str, $len);
-            }
-          elsif ($jus eq 'left')
-            {
-              $str = sprintf ("%-${len}.${len}s", $str);
-            }
-          elsif ($jus eq 'right')
-            {
-              $str = sprintf ("%${len}.${len}s", $str);
-            }
-        }
-      elsif ($len)
-        {
-          $str = sprintf ("%-${len}.${len}s", $str);
-        }
-
-      if ($color && $self->{color})
-        {
-          $line .= $self->colored ([$color], $str);
-        }
-      else
-        {
-          $line .= $str;
-        }
-
-      $col++;
-    }
-
-  while ($col <= $#len)
-    {
-      $line .= $separator;
-      $line .= ' ' x $len[$col];
-      $col++;
-    }
-
-  $line .= $separator;
-
-  if ($self->interval () && (($self->{count} % $self->interval ()) == 0))
-    {
-      $line =~ s/ /./go;
-    }
-
-  $self->{fhout}->print ("$line\n");
-
-  $self->{count}++;
-}
-
-package printer::terminal;
-
-use strict;
-
-our @ISA = qw (printer);
-
-sub colored
-{
-  use Term::ANSIColor qw ();
-  my $self = shift;
-  return &Term::ANSIColor::colored (@_);
-}
-
-sub separator
-{
-  return " | ";
-}
-
-sub interval
-{
-  my $self = shift;
-  return $self->{interval};
-}
-
-package printer::csv;
-
-use strict;
-
-our @ISA = qw (printer);
-
-sub separator
-{
-  return " ; ";
-}
-
-sub interval
-{
-  0;
-}
-
-package main;
-
-use strict;
 use Cwd;
 use FileHandle;
 use File::Path;
@@ -773,8 +102,16 @@ use File::Spec;
 use File::Basename;
 use Data::Dumper;
 use Getopt::Long;
-use Term::ANSIColor;
 use File::stat;
+
+use strict;
+
+use t;
+
+use mitraille::aggregate;
+use mitraille::build;
+use mitraille::node;
+use mitraille::printer::terminal;
 
 my $HOME = (getpwuid ($>))[7];
 
@@ -1006,7 +343,7 @@ sub runMitrailletteTestCase
   } <*.cjob>;
 
 
-  my @sh = &aggregate::aggregate ($args{maxtime}, @cjob);
+  my @sh = &mitraille::aggregate::aggregate ($args{maxtime}, @cjob);
 
   for my $sh (@sh)
     {
@@ -1140,7 +477,7 @@ sub getReferenceMitraillette
 
   if ($reference)
     {
-      if (my $build1 = 'build'->new (path => $reference))
+      if (my $build1 = 'mitraille::build'->new (path => $reference))
         {
           ($mitraillette1) = &getLastMitraillette (build => $build1);
           $mitraillette1 or die;
@@ -1225,12 +562,12 @@ sub showStatus
       # STATUS
       push @length, 10;
       push @justify, 'center';
-      my @F = 'node'->fields ();
+      my @F = 'mitraille::node'->fields ();
       push @length, (11) x scalar (@F);
       push @justify, ('center') x scalar (@F);
     }
 
-  my $printer = 'printer::terminal'->new 
+  my $printer = 'mitraille::printer::terminal'->new 
   (
     color => 1, justify => \@justify, 
     length => \@length, interval => 5,
@@ -1247,7 +584,7 @@ sub showStatus
   if ($mitraillette1 && $mitraillette2)
     {
       push @head, 'STATUS';
-      my @F = 'node'->fields ();
+      my @F = 'mitraille::node'->fields ();
       for my $F (@F)
         {
           push @head, $F;
@@ -1289,8 +626,8 @@ sub showStatus
         {
           my @txtmess;
 
-          my @diff01 = &node::diff ($o0, $o1);
-          my @diff21 = &node::diff ($o2, $o1);
+          my @diff01 = &mitraille::node::diff ($o0, $o1);
+          my @diff21 = &mitraille::node::diff ($o2, $o1);
 
           if (@diff01 && @diff21)
             {
@@ -1319,7 +656,7 @@ sub showStatus
         }
       elsif ($o1 && ! grep ({ $_->{status} ne 'COMPLETED' } ($info0, $info1)))
         {
-          my @diff01 = &node::diff ($o0, $o1);
+          my @diff01 = &mitraille::node::diff ($o0, $o1);
           if (@diff01)
             {
               $txtmess = 'DIFF';
@@ -1364,7 +701,7 @@ sub getLastMitraillette
   return pop (@mitraillette);
 }
 
-my $build = 'build'->new ();
+my $build = 'mitraille::build'->new ();
 $build or die ("mitpack should be called either from a pack or from a cmake build");
 
 my %opts = (version => $build->getVersion (), filter => '', maxtime => 0);

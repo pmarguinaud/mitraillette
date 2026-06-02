@@ -5,9 +5,9 @@ use strict;
 use FindBin qw ($Bin);
 use lib "$Bin/../lib";
 
-use MITRAILLE;
+use mitraille;
 
-&MITRAILLE::run 
+&mitraille::run 
 (
   station         => $ENV{STATION},
   mit_install_dir => $ENV{MIT_INSTALL_DIR},

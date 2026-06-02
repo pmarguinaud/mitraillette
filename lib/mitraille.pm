@@ -1,4 +1,4 @@
-package MITRAILLE;
+package mitraille;
 
 use strict;
 
