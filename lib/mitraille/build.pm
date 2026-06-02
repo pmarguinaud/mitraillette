@@ -12,12 +12,17 @@ sub new
   my %args = @_;
 
   $args{path} ||= &cwd ();
+  $args{path} = 'File::Spec'->rel2abs ($args{path});
 
   if ($class eq __PACKAGE__)
     {
       if (-f "$args{path}/.genesis")
         {
           $class = 'mitraille::build::pack';
+        }
+      elsif (-f "$args{path}/install_manifest.txt")
+        {
+          $class = 'build::cmake';
         }
       elsif (-f "$args{path}/build/install_manifest.txt")
         {

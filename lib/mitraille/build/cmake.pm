@@ -16,7 +16,14 @@ sub getExecutablePath
       return $self->{executablePath}{$exec};
     }
 
-  my @install = do { my $fh = 'FileHandle'->new ("<$self->{path}/build/install_manifest.txt"); <$fh> };
+  my @install = do 
+  { 
+    my $fh = 'FileHandle'->new ("<$self->{path}/build/install_manifest.txt")
+          || 'FileHandle'->new ("<$self->{path}/install_manifest.txt");
+
+    <$fh> 
+  };
+
   chomp for (@install);
 
   for my $path (@install)
