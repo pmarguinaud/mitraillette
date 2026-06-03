@@ -22,7 +22,7 @@ sub new
         }
       elsif (-f "$args{path}/install_manifest.txt")
         {
-          $class = 'build::cmake';
+          $class = 'mitraille::build::cmake';
         }
       elsif (-f "$args{path}/build/install_manifest.txt")
         {
