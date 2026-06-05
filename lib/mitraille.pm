@@ -16,8 +16,6 @@ use mitraille::node;
 use mitraille::printer::terminal;
 use mitraille::generate;
 
-my $HOME = (getpwuid ($>))[7];
-
 sub center
 {
   my ($s, $n) = @_; 
@@ -29,8 +27,6 @@ sub center
     }   
   return $s; 
 }
-
-my $MITRAILLE = "$HOME/mitraille";
 
 sub runCommand
 {
@@ -80,7 +76,7 @@ sub swapLink
 sub getProFile
 {
   my %args = @_;
-  my $pro_file = "$MITRAILLE/PRO_FILE.$args{version}";
+  my $pro_file = "$ENV{MIT_INSTALL_DIR}/PRO_FILE.$args{version}";
   return $pro_file;
 }
 
@@ -92,7 +88,7 @@ sub createMitrailletteTestCase
 
   my $pro_file = &getProFile (build => $build, %args);
 
-  chdir ($MITRAILLE);
+  chdir ($ENV{MIT_INSTALL_DIR});
   
   my $dir = lc ($args{version});
   
@@ -111,7 +107,7 @@ sub createMitrailletteTestCase
   my @test1 = map { &basename ($_) } <$dir/*>;
   my ($mitraillette) = grep { ! $test0{$_} } @test1;
   
-  $mitraillette = "$MITRAILLE/$dir/$mitraillette";
+  $mitraillette = "$ENV{MIT_INSTALL_DIR}/$dir/$mitraillette";
   
   my @cjob = sort <$mitraillette/*.cjob>;
 
