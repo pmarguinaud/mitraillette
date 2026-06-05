@@ -113,7 +113,7 @@ sub aggregate
                 $fh->print ("#SBATCH $attr $h->{$attr}\n");
               }
           }
-        $fh->print ("#SBATCH --time $time\n");
+        $fh->printf ("#SBATCH --time %d\n", $time + scalar (@job)); # + 1 minute per job
         $fh->print ("#SBATCH -o /dev/null\n");
   
         $fh->print ("\n" x 2);
