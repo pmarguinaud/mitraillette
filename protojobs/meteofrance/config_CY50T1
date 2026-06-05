@@ -23,7 +23,10 @@ TMP_LOC=$TMPDIR/tmp/mitraille.${SLURM_JOBID}.${STARTTIME}
 else
 TMP_LOC=$TMPDIR/tmp/mitraille.${SLURM_JOBID}
 fi
+
+\rm -rf $TMP_LOC
 mkdir -p $TMP_LOC
+
 # Location of input data: cycle independent data
 # FILE_PATH_DBASE.. for databases to use conf 923.
 # FILE_PATH for other files.
