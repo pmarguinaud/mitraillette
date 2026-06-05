@@ -30,8 +30,8 @@ mkdir -p $TMP_LOC
 # Location of input data: cycle independent data
 # FILE_PATH_DBASE.. for databases to use conf 923.
 # FILE_PATH for other files.
-INPUTFILES_HOME=/perm/soa1/mitraillette/mitraillette-data/
-INPUTFILES_WORKDIR=/perm/soa1/mitraillette/mitraillette-data/
+INPUTFILES_HOME=/perm/sor/mitraillette-data/
+INPUTFILES_WORKDIR=/perm/sor/mitraillette-data/
 # - for regular validation
 FILE_PATH=${INPUTFILES_HOME}/anal_mitraille
 FILE_PATH_DILA=${INPUTFILES_HOME}/dila
@@ -134,7 +134,7 @@ fi
 }
 
 # xpnam
-XPNAM=/perm/soa1/xpnam/bin/xpnam
+XPNAM=__mit_install_dir__/bin/xpnam
 
 # Machine-depending namelist variables
 LOPT_SCALAR=.TRUE.

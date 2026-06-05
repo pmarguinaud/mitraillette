@@ -148,7 +148,7 @@ fi
 }
 
 # xpnam
-XPNAM=${GCOHOME}/public/bin/xpnam
+XPNAM=__mit_install_dir__/bin/xpnam
 
 # Machine-depending namelist variables
 LOPT_SCALAR=.TRUE.
