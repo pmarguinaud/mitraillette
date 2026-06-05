@@ -544,7 +544,7 @@ sub showStatus
               push @line, "<$colmess>", $txtmess;
             }
         }
-      elsif ($o1)
+      elsif ($o1 && ($info0->{status} ne 'UNKNOWN') && ($info0->{status} ne $info1->{status}))
         {
           $txtmess = 'DIFF';
           $colmess = 'red on_black';
