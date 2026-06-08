@@ -25,7 +25,7 @@ export TEMPORAIRE=$TMP_LOC
 cd $TEMPORAIRE || exit
 
 MYOWNBIN=__my_own_pack__/bin/PGD
-[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+
 CYCLE='__v_cycle__'
 
 # must have this to tun PGD with CY49
