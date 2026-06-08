@@ -24,7 +24,7 @@ else
 TMP_LOC=$TMPDIR/tmp/mitraille.${SLURM_JOBID}
 fi
 
-\rm -rf $TMP_LOC
+\rm -rf $TMP_LOC/*
 mkdir -p $TMP_LOC
 
 # Location of input data: cycle independent data
