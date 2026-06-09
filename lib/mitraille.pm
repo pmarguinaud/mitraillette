@@ -10,7 +10,8 @@ use File::stat;
 
 use strict;
 
-use mitraille::aggregate;
+use mitraille::aggregate::maxtime;
+use mitraille::aggregate::maxjob;
 use mitraille::build;
 use mitraille::node;
 use mitraille::printer::terminal;
@@ -219,7 +220,16 @@ sub runMitrailletteTestCase
   } <*.cjob>;
 
 
-  my @sh = &mitraille::aggregate::aggregate ($args{maxtime}, @cjob);
+  my @sh;
+
+  if ($args{maxjob} > 0)
+    {
+      @sh = &mitraille::aggregate::maxjob::aggregate ($args{maxjob}, @cjob);
+    }
+  else
+    {
+      @sh = &mitraille::aggregate::maxtime::aggregate ($args{maxtime}, @cjob);
+    }
 
   for my $sh (@sh)
     {

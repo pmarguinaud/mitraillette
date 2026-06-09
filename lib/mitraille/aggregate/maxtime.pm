@@ -1,4 +1,4 @@
-package mitraille::aggregate;
+package mitraille::aggregate::maxtime;
 
 use strict;
 
@@ -56,6 +56,8 @@ sub header
 sub aggregate
 {
   my $max = shift; # Max time in minutes
+
+  unlink ($_) for (<mit.*.sh>);
 
   my @cjob = @_;
 
