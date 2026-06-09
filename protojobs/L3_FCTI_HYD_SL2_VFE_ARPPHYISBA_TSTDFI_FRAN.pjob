@@ -36,8 +36,7 @@ echo TEMPLATE=$TEMPLATE
 echo "@@ `date`"
 
 # Move on a workspace.
-export TEMPORAIRE=$TMP_LOC
-cd $TEMPORAIRE || exit
+cd $TMP_LOC
 
 MYOWNBIN=__my_own_pack__/bin/MASTERODB
 
@@ -178,10 +177,8 @@ echo " Save model results for incr "
 
 $CP ICMSH${CNMEXPS}+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0000.HIST
 
-echo " Present files on the workdir $TEMPORAIRE "
 ls -l
 
 
 
-cd __mitra_home__
 echo "@@ `date`"

@@ -123,7 +123,6 @@ sub set_job
       s/__my_own_pack__/${build}/go;
       s/__nam_path__/${nam_path_plain}/go;
       s/__mitra_pid__/$args{mitra_pid}/go;
-      s/__mitra_home__/${mit_install_dir}/go;
       s/__mit_install_dir__/${mit_install_dir}/go;
     }
 

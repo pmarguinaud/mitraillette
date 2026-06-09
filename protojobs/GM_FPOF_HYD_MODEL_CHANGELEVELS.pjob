@@ -25,8 +25,7 @@ echo TEMPLATE=$TEMPLATE
 echo "@@ `date`"
 
 # Move on a workspace.
-export TEMPORAIRE=$TMP_LOC
-cd $TEMPORAIRE || exit
+cd $TMP_LOC
 
 MYOWNBIN=__my_own_pack__/bin/MASTERODB
 
@@ -177,5 +176,4 @@ done # inum
 # -----------------------------------------------------------------------------
 
 
-cd __mitra_home__
 echo "@@ `date`"

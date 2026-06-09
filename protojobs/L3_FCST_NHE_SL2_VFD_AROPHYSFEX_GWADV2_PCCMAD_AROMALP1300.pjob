@@ -30,8 +30,7 @@ echo TEMPLATE=$TEMPLATE
 echo "@@ `date`"
 
 # Move on a workspace.
-export TEMPORAIRE=$TMP_LOC
-cd $TEMPORAIRE || exit
+cd $TMP_LOC
 
 MYOWNBIN=__my_own_pack__/bin/MASTERODB
 
@@ -170,10 +169,8 @@ done
 ##   $CP AROMOUT_.00${iech}.fa ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.AROMOUT.fa
 ## done
 
-echo " Present files on the workdir $TEMPORAIRE "
 ls -l
 
 
 
-cd __mitra_home__
 echo "@@ `date`"

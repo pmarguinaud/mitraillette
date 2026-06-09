@@ -22,8 +22,7 @@ echo TEMPLATE=$TEMPLATE
 echo "@@ `date`"
 
 # Move on a workspace.
-export TEMPORAIRE=$TMP_LOC
-cd $TEMPORAIRE || exit
+cd $TMP_LOC
 
 MYOWNBIN=__my_own_pack__/bin/MASTERODB
 
@@ -100,10 +99,8 @@ OUTNAME="${CNMEXPL}"
 # save model results
 $CP PF${CNMEXPS}FRAN+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}FRAN+0000
 
-echo " Present files on the workdir $TEMPORAIRE "
 ls -l
 
 
 
-cd __mitra_home__
 echo "@@ `date`"
