@@ -2,66 +2,15 @@ package mitraille::aggregate::maxtime;
 
 use strict;
 
-use FileHandle;
-use Data::Dumper;
-use Storable;
-
-use strict;
-
-sub slurpl
-{
-  my $f = shift;
-  my @x = do { my $fh = 'FileHandle'->new ("<$f"); <$fh> };
-  chomp for (@x);
-  return @x;
-}
-
-sub header
-{
-  my $f = shift;
-
-  my @sbatch = grep { s/^#SBATCH\s+//o } &slurpl ($f);
-
-  my %h;
-
-  for (@sbatch)
-    {
-      s/\s*$//o;
-      next if (m/^--job-name=/o);
-      next if (m/^-J/o);
-
-      if (m/^(--\S+)=(.*)$/o)
-        {
-          $h{$1} = $2;
-        }
-      elsif (m/^(--?\S+)\s+(\S.*)$/o)
-        {
-          $h{$1} = $2;
-        }
-      elsif (m/^(-\S+)$/o)
-        {
-          $h{$1} = '__FLAG__';
-        }
-    }  
-
-  for (values (%h))
-    {
-      s/^"//o;
-      s/"$//o;
-    }
-
-  return \%h;
-}
-
 sub aggregate
 {
-  my $max = shift; # Max time in minutes
-
-  unlink ($_) for (<mit.*.sh>);
+  my $maxtime = shift; # Max time in minutes
 
   my @cjob = @_;
+  unlink ($_) for (<mit.*.sh>);
 
-  return @cjob unless ($max > 0);
+
+  return @cjob unless ($maxtime > 0);
 
   local $Storable::canonical = 1;
   
@@ -69,7 +18,7 @@ sub aggregate
   
   for my $f (@cjob)
     {
-      my $h = &header ($f);
+      my $h = &mitraille::aggregate::header ($f);
   
       my $time = delete $h->{'--time'};
       my $o = delete $h->{'-o'};
@@ -146,7 +95,7 @@ sub aggregate
       for my $job (@{ $j{$sign} })
         {
 
-          if ($time + $job->{'time'} > $max)
+          if ($time + $job->{'time'} > $maxtime)
             {
               $dump->();
             }
