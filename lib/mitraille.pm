@@ -230,6 +230,7 @@ sub runMitrailletteTestCase
 sub jobInfo
 {
   my $o = shift;
+  my %args = @_;
 
   my $text = &slurp ($o);
 
@@ -269,15 +270,22 @@ EOF
 
   $status ||= 'UNKNOWN';
 
-  if ($status eq 'UNKNOWN')
+  my %h;
+
+  if (scalar (@{ $args{fields} }))
     {
-      if ($text =~ m/sacct -j/o)
+      %h = ($text =~ m/([A-Z]\w*)\s*=\s*(\S+)/igoms);
+     
+      for (values (%h))
         {
-#         $status = 'COMPLETE';
+          s/,$//o;
         }
     }
 
-  return {status => $status, CNMEXPL => $CNMEXPL};
+  $h{status} = $status;
+  $h{CNMEXPL} = $CNMEXPL;
+
+  return \%h;
 }
 
 sub getColorStatus
@@ -432,6 +440,12 @@ sub showStatus
       push @justify, 'center';
     }
 
+  if (my @f = @{ $args{fields} })
+    {
+      push @length, (10) x scalar (@f);
+      push @justify, ('center') x scalar (@f);
+    }
+
   if ($mitraillette1 && $mitraillette2)
     {
       # STATUS
@@ -454,6 +468,11 @@ sub showStatus
   for my $R (@R)
     {
       push @head, $R;
+    }
+
+  if (my @f = @{ $args{fields} })
+    {
+      push @head, @f;
     }
 
   if ($mitraillette1 && $mitraillette2)
@@ -479,9 +498,9 @@ sub showStatus
       my $o1 = $o1{$O};
       my $o2 = $o2{$O};
 
-      my $info0 = $o0 && &jobInfo ($o0);
-      my $info1 = $o1 && &jobInfo ($o1);
-      my $info2 = $o2 && &jobInfo ($o2);
+      my $info0 = $o0 && &jobInfo ($o0, %args);
+      my $info1 = $o1 && &jobInfo ($o1, %args);
+      my $info2 = $o2 && &jobInfo ($o2, %args);
 
       push @line, $O;
 
@@ -495,6 +514,11 @@ sub showStatus
       for my $info (@info)
         {
           push @line, $info ? ('<' . &getColorStatus ($info->{status}) . '>', $info->{status}) : ('');
+        }
+
+      for my $f (@{ $args{fields} })
+        {
+          push @line, defined ($info0->{$f}) ? $info0->{$f} : '';
         }
 
       if ($o1 && $o2 && ! grep ({ $_->{status} ne 'COMPLETED' } ($info0, $info1, $info2)))

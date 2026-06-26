@@ -108,9 +108,9 @@ use mitraille;
 my $build = 'mitraille::build'->new ();
 $build or die ("mitpack should be called either from a pack or from a cmake build");
 
-my %opts = (version => $build->getVersion (), filter => '', maxtime => 0, maxjob => 0);
+my %opts = (version => $build->getVersion (), filter => '', maxtime => 0, maxjob => 0, fields => '');
 my @opts_f = qw (verbose help reuse dryrun status cancel list);
-my @opts_s = qw (version filter maxtime maxjob);
+my @opts_s = qw (version filter maxtime maxjob fields);
 my @opts_l = qw (reference);
 
 
@@ -123,11 +123,6 @@ sub help
 if (-f '.mitpack.conf')
   {
     unshift (@ARGV, @{ do './.mitpack.conf' });
-  }
-
-if ($opts{reference})
-  {
-    $opts{reference} = [$opts{reference}];
   }
 
 &GetOptions
@@ -143,11 +138,10 @@ if ($opts{help})
     exit (0);
   }
 
-my $mitraillette;
-
 $opts{reuse} ||= $opts{status};
 $opts{reuse} ||= $opts{cancel};
 $opts{reuse} ||= $opts{list};
+$opts{fields} = [split (m/,/o, $opts{fields})];
 
 if ($opts{reference})
   {
@@ -157,6 +151,8 @@ if ($opts{reference})
       }
     ($opts{reference1}, $opts{reference2}) = @{ $opts{reference} };
   }
+
+my $mitraillette;
 
 $opts{filter} = [split (m/,/o, $opts{filter})];
 
