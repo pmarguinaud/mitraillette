@@ -85,20 +85,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}__ICMSHARPEINIT"
-
-# save final ARPEGE file
-$CP CN90xARPEINIT ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/$OUTNAME
-
 ls -l
-
-
 
 echo "@@ `date`"

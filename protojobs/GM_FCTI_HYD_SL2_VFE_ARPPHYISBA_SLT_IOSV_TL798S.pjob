@@ -100,22 +100,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
-$LFIMV ICMSH${CNMEXPS}+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0006.HIST
-
-$CP DHFDL${CNMEXPS}+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0006.DDHFDL
-$CP DHFZO${CNMEXPS}+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0006.DDHFZO
-
 ls -l
-
-
 
 echo "@@ `date`"

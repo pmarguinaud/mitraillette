@@ -93,16 +93,6 @@ then
 fi
 
 
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-# nothing done for the time being
-
 ls -l
-
-
 
 echo "@@ `date`"

@@ -53,8 +53,6 @@ ${CNMEXPL}.nam > namprovi
 #      *  Execution  *
 #      ***************
 
-
-
 echo " Do namelists for each job "
 
 sed "s/ N923=0/ N923=1/" namprovi > namprovi_1
@@ -339,22 +337,8 @@ for MM in 01 ; do
 
   \rm tsl_* tpl_* wsl_* wpl_* snl_*
 
-
-  #      ***********************************
-  #      *  Save model results             *
-  #      ***********************************
-
-  echo " Write output monthly climatologies "
-
-  OUTNAME="${CNMEXPL}"
-
-  \mv Const.Clim Const.Clim.${MM}
-  $CP Const.Clim.${MM} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__${DOMM}_m${MM}_mitrail
-
 done
 
 ls -l
-
-
 
 echo "@@ `date`"

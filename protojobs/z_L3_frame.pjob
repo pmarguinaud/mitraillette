@@ -101,15 +101,6 @@ then
   \cat OUTPUT_LISTING
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
 ls -l
-
-
 
 echo "@@ `date`"

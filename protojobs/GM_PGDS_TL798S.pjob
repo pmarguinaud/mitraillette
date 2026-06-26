@@ -75,8 +75,6 @@ $ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_cover
 #      *  Execution  *
 #      ***************
 
-
-
 echo " PGDEXE job running "
 
 mpilaunch $MYOWNBIN
@@ -94,23 +92,6 @@ then
   done
 fi
 
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save PGD files "
-
-OUTNAME="${CNMEXPL}"
-
-# save PGD files
-## for ifile in PGD*.lfi
-## do
-##   $CP $ifile ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__$ifile
-## done
-$CP PGD*.lfi ${WORKDIR}/SURFEX_FILES/PGD_${domain2}.lfi
-
 ls -l
-
-
 
 echo "@@ `date`"

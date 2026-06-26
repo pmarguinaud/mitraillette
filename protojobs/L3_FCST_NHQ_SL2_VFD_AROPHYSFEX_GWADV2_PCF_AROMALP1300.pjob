@@ -144,33 +144,6 @@ then
   \cat OUTPUT_LISTING
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
-for iech in 00 01 02 03 04
-do
-  $CP ICMSH${CNMEXPS}+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.HIST
-done
-
-for iech in 03
-do
-  $CP PF${CNMEXPS}FRANXL0013+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.FRANXL0013
-done
-
-## for iech in 03
-## do
-##   $CP AROMOUT_.00${iech}.des ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.AROMOUT.des
-##   $CP AROMOUT_.00${iech}.fa ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.AROMOUT.fa
-## done
-
 ls -l
-
-
 
 echo "@@ `date`"

@@ -94,22 +94,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
-for sv in SVARPE*
-do
-  $CP $sv ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__SV0312005071500L.C010.$sv
-done
-
 ls -l
-
-
 
 echo "@@ `date`"

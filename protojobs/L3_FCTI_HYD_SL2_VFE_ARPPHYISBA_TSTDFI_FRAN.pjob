@@ -111,21 +111,11 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results for bias    *
-#      ***********************************
-
-echo " Save model results for bias "
-
-OUTNAME="${CNMEXPL}"
-$CP ICMSH${CNMEXPS}+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__BIAS
-
 mv ICMSH${CNMEXPS}+0000 ICMSH${CNMEXPS}BIAS
 \rm ICMSH${CNMEXPS}INIT
 \rm ELSCF*
 \rm NODE*
- 
+
 #      *****************************************************
 #      *  Get input files for incr.                       **
 #      *****************************************************
@@ -168,17 +158,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results for incr    *
-#      ***********************************
-
-echo " Save model results for incr "
-
-$CP ICMSH${CNMEXPS}+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0000.HIST
-
 ls -l
-
-
 
 echo "@@ `date`"

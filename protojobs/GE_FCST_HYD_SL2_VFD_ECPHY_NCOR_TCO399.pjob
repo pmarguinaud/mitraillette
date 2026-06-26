@@ -115,19 +115,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
-# Historic files:
-
 ls -l
-
-
 
 echo "@@ `date`"

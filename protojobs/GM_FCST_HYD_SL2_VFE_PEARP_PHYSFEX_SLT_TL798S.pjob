@@ -115,17 +115,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
 ls -l
-
-
 
 echo "@@ `date`"

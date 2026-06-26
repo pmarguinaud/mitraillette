@@ -92,19 +92,6 @@ then
   done
 fi
 
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save PGD files "
-
-OUTNAME="${CNMEXPL}"
-
-# save PGD files
-$CP PGDFILE.2.5km_FRANGP.fa ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PGDFILE.2.5km_FRANGP.fa
-
 ls -l
-
-
 
 echo "@@ `date`"

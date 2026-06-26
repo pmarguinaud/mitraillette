@@ -164,6 +164,4 @@ diff in_line off_line
 
 diff just_model in_line
 
-
-
 echo "@@ `date`"

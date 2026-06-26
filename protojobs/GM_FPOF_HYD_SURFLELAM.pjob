@@ -97,19 +97,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save post-processing files "
-
-OUTNAME="${CNMEXPL}"
-
-$CP PF${CNMEXPS}FRANGP+0000.sfx ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0000.AROMOUT.fa
-
 ls -l
-
-
 
 echo "@@ `date`"

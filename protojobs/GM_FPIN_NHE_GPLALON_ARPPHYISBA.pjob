@@ -125,36 +125,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
-# Historic files:
-$CP ICMSH${CNMEXPS}+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0006.HIST
-
-# DDH files:
-$CP DHFDL${CNMEXPS}+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0006.DDHFDL
-$CP DHFZO${CNMEXPS}+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech0006.DDHFZO
-
-# Post-processing files:
-$CP PF${CNMEXPS}GLOB25+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB25+0000
-$CP PF${CNMEXPS}GLOB15+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB15+0000
-$CP PF${CNMEXPS}GLOB05+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB05+0000
-$CP PF${CNMEXPS}EURAT01+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}EURAT01+0000
-$CP PF${CNMEXPS}EUROC25+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}EUROC25+0000
-$CP PF${CNMEXPS}GLOB25+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB25+0006
-$CP PF${CNMEXPS}GLOB15+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB15+0006
-$CP PF${CNMEXPS}GLOB05+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB05+0006
-$CP PF${CNMEXPS}EURAT01+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}EURAT01+0006
-$CP PF${CNMEXPS}EUROC25+0006 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}EUROC25+0006
-
 ls -l
-
-
 
 echo "@@ `date`"

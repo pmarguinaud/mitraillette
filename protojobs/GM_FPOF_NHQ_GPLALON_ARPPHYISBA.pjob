@@ -112,24 +112,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save post-processing files "
-
-OUTNAME="${CNMEXPL}"
-
-# Post-processing files:
-$CP PF${CNMEXPS}GLOB25+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB25+0000
-$CP PF${CNMEXPS}GLOB15+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB15+0000
-$CP PF${CNMEXPS}GLOB05+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}GLOB05+0000
-$CP PF${CNMEXPS}EURAT01+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}EURAT01+0000
-$CP PF${CNMEXPS}EUROC25+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}EUROC25+0000
-
 ls -l
-
-
 
 echo "@@ `date`"

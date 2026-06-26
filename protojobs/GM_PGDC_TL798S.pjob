@@ -47,7 +47,6 @@ dir_file_lfi=${WORKDIR}/SURFEX_FILES
 file_lfi=PGD_${domain}.lfi
 file_fa=test
 
-## $CP ${FILE_PATH}/CLIM_MODEL_${domain}_m${imm} ${WORKDIR}/${domain}_m${imm}
 $CP ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/CLIM_MODEL_${domain}_m${imm} ${WORKDIR}/${domain}_m${imm}
 fic_ref_fa=${WORKDIR}/${domain}_m${imm}
 
@@ -104,20 +103,6 @@ echo " Second call to PGDCONV "
 
 PGDCONV testfa < dirfa
 
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save PGD files "
-
-OUTNAME="${CNMEXPL}"
-
-# save PGD files
-## $CP fic2 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__${file_lfi}_conv.fa
-$CP fic2 ${WORKDIR}/SURFEX_FILES/${file_lfi}_conv.fa
-
 ls -l
-
-
 
 echo "@@ `date`"

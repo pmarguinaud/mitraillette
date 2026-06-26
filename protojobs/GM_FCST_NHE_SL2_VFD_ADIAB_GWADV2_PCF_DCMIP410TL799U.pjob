@@ -90,23 +90,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
-# Historic files:
-for iech in 00 06 12
-do
-  $CP ICMSH${CNMEXPS}+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.HIST
-done
-
 ls -l
-
-
 
 echo "@@ `date`"

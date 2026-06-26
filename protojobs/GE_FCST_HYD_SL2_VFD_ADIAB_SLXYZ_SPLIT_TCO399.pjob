@@ -114,23 +114,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
-# Historic files:
-for f in ICMSH*+*
-do
-  $CP $f ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__$f
-done
-
 ls -l
-
-
 
 echo "@@ `date`"

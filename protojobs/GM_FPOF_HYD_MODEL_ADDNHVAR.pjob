@@ -96,18 +96,8 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-# Post-processing files:
 $CP PF${CNMEXPS}000+0000 ${FILE_PATH}/B${insmaxa}${idate}L.C${instret}.${indgl}l.L${inflevgfin}.NH
 
 ls -l
-
-
 
 echo "@@ `date`"

@@ -80,6 +80,4 @@ fi
 
 ls -l
 
-
-
 echo "@@ `date`"

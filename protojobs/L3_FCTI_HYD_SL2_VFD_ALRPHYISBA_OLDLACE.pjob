@@ -108,33 +108,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
-if [ -a ICMSH${CNMEXPS}CHKOUT2 ]; then
-  $CP ICMSH${CNMEXPS}CHKOUT2 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__CHKOUT2
-fi
-
-for iech in 00 01 02 12
-do
- if [ -a ICMSH${CNMEXPS}+00${iech} ]; then
-  $CP ICMSH${CNMEXPS}+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.HIST
- fi
-done
-
-## for iech in 00 01 02 12
-## do
-## $CP PF${CNMEXPS}OPER+00${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${OUTNAME}00${iech}
-## done
-
 ls -l
-
-
 
 echo "@@ `date`"

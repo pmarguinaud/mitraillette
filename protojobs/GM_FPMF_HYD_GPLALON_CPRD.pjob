@@ -93,24 +93,8 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save model results "
-
-OUTNAME="${CNMEXPL}"
-
 # Filtering matrices:
-$CP matrix.fil.GLOB25 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.glob25.07
-$CP matrix.fil.GLOB15 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.glob15.07
-$CP matrix.fil.GLOB05 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.glob05.07
-$CP matrix.fil.EUROC25 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.euroc25.08
-$CP matrix.fil.EURAT01 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.eurat01.01
 
 ls -l
-
-
 
 echo "@@ `date`"

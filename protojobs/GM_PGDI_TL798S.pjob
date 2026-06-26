@@ -93,20 +93,6 @@ then
   done
 fi
 
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save PGD files "
-
-OUTNAME="${CNMEXPL}"
-
-# save PGD files
-## $CP PGD_${domain2}_c923.fa ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PGD_${domain2}_c923.fa
-$CP PGD_${domain2}_c923.fa ${WORKDIR}/SURFEX_FILES/PGD_${domain2}_c923.fa
-
 ls -l
-
-
 
 echo "@@ `date`"

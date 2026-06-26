@@ -85,18 +85,6 @@ then
   done
 fi
 
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-echo " Save post-processing files "
-
-OUTNAME="${CNMEXPL}"
-$CP PF${CNMEXPS}LACE20+0000 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__PF${CNMEXPS}LACE20+0000
-
 ls -l
-
-
 
 echo "@@ `date`"

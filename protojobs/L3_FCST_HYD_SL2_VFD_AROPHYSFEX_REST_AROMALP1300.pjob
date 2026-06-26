@@ -121,8 +121,6 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 #      *  Execution  *
 #      ***************
 
-
-
 # Create SURFEX climatology and initial condition file with latest version
 
 $CP namprovi fort.4
@@ -222,7 +220,5 @@ done
 )
 
 ls -l
-
-
 
 echo "@@ `date`"
