@@ -103,10 +103,6 @@ sed "s/ N923=0/ N923=9/" namprovi > namprovi_9
 
 \rm namprovi
 
-#      ***************
-#      *  Part 1     *
-#      ***************
-
 echo " Get input files necessary for part 1 "
 
 $CP ${FILE_PATH_DBASE1}/* .
@@ -121,6 +117,71 @@ gzip -d Oro_Min.gz
 gzip -d Sigma.gz
 gzip -d Urbanisation.gz
 gzip -d Water_Percentage.gz
+
+echo " Get input files necessary for part 2 "
+
+path_2=${FILE_PATH_DBASE2}
+$CP ${path_2}/itp_GL   itp_GL
+$CP ${path_2}/alb_GL   alb_GL
+$CP ${path_2}/emi_GL   emi_GL
+$CP ${path_2}/dps_GL   dps_GL
+$CP ${path_2}/arg_GL   arg_GL
+$CP ${path_2}/sab_GL   sab_GL
+$CP ${path_2}/vgx_GL   vgx_GL
+$CP ${path_2}/dpr_GL   dpr_GL
+
+echo " Get input files necessary for parts 4 to 6 (those which do not depend on the month) "
+
+$CP ${path_2}/z0v_GL  z0v_GL
+$CP ${path_2}/alv_GL  alv_GL
+$CP ${path_2}/rsm_GL  rsm_GL
+
+path_5=${FILE_PATH_DBASE5}
+$CP ${path_5}/msk_HR  msk_HR
+$CP ${path_5}/itp_HR  itp_HR
+$CP ${path_5}/dpr_HR  dpr_HR
+$CP ${path_5}/rsm_HR  rsm_HR
+$CP ${path_5}/vgx_HR  vgx_HR
+$CP ${path_5}/alv_HR  alv_HR
+$CP ${path_5}/z0v_HR  z0v_HR
+
+path_6=${FILE_PATH_DBASE6}
+$CP ${path_6}/rel_GL.gz  rel_GL.gz
+gzip -d  rel_GL.gz
+
+for MM in 01 ; do
+
+  echo " Month $MM "
+
+  echo " Get input monthly files necessary for part 4 "
+
+  $CP ${path_2}/veg${MM}_GL  veg${MM}_GL
+  $CP ${path_2}/lai${MM}_GL  lai${MM}_GL
+
+  echo " Get input monthly files necessary for part 5 "
+
+  $CP ${path_5}/veg_${MM}_HR  veg_${MM}_HR
+  $CP ${path_5}/lai_${MM}_HR  lai_${MM}_HR
+
+  echo " Get input monthly files necessary for part 6 "
+
+  $CP ${path_6}/tpl_${MM}_GL.gz tpl_${MM}_GL.gz ; gzip -d  tpl_${MM}_GL.gz   
+  $CP ${path_6}/wpl_${MM}_GL.gz wpl_${MM}_GL.gz ; gzip -d  wpl_${MM}_GL.gz   
+  $CP ${path_6}/snl_${MM}_GL.gz snl_${MM}_GL.gz ; gzip -d  snl_${MM}_GL.gz   
+
+  echo " Get input monthly files necessary for part 8 "
+
+  $CP ${FILE_PATH_DBASE8}/abc_quadra_${MM} abc_quadra_${MM}
+
+  echo " Get input monthly files necessary for part 9 "
+
+  $CP ${FILE_PATH_DBASE9}/aero.tegen.m${MM}_GL aero.tegen.m${MM}_GL
+
+done
+
+#      ***************
+#      *  Part 1     *
+#      ***************
 
 # PGD file (FA format): none for the time being
 ### $ECP ${FILE_PATH}/PGDFILE_${DOMM}.fa   PGDFILE_${DOMM}.fa
@@ -193,18 +254,6 @@ ls -l
 #      *  Part 2     *
 #      ***************
 
-echo " Get input files necessary for part 2 "
-
-path_2=${FILE_PATH_DBASE2}
-$CP ${path_2}/itp_GL   itp_GL
-$CP ${path_2}/alb_GL   alb_GL
-$CP ${path_2}/emi_GL   emi_GL
-$CP ${path_2}/dps_GL   dps_GL
-$CP ${path_2}/arg_GL   arg_GL
-$CP ${path_2}/sab_GL   sab_GL
-$CP ${path_2}/vgx_GL   vgx_GL
-$CP ${path_2}/dpr_GL   dpr_GL
-
 echo " Run part 2 "
 
 \mv namprovi_2 fort.4
@@ -271,36 +320,15 @@ ls -l
 #      *  Parts 4 to 9  *
 #      ******************
 
-echo " Get input files necessary for parts 4 to 6 (those which do not depend on the month) "
-
-$CP ${path_2}/z0v_GL  z0v_GL
-$CP ${path_2}/alv_GL  alv_GL
-$CP ${path_2}/rsm_GL  rsm_GL
-
-path_5=${FILE_PATH_DBASE5}
-$CP ${path_5}/msk_HR  msk_HR
-$CP ${path_5}/itp_HR  itp_HR
-$CP ${path_5}/dpr_HR  dpr_HR
-$CP ${path_5}/rsm_HR  rsm_HR
-$CP ${path_5}/vgx_HR  vgx_HR
-$CP ${path_5}/alv_HR  alv_HR
-$CP ${path_5}/z0v_HR  z0v_HR
-
-path_6=${FILE_PATH_DBASE6}
-$CP ${path_6}/rel_GL.gz  rel_GL.gz
-gzip -d  rel_GL.gz
-
 #for MM in 01 02 03 04 05 06 07 08 09 10 11 12 ; do
 for MM in 01 ; do
 
   echo " Month $MM "
 
-  echo " Get input monthly files necessary for part 4 "
-
   \mv  Const.Clim.${MM}  Const.Clim
 
-  $CP ${path_2}/veg${MM}_GL  veg_GL
-  $CP ${path_2}/lai${MM}_GL  lai_GL
+  \cp veg${MM}_GL  veg_GL
+  \cp lai${MM}_GL  lai_GL
 
   echo " Run part 4 "
 
@@ -327,10 +355,8 @@ for MM in 01 ; do
 
   \rm veg_GL lai_GL
 
-  echo " Get input monthly files necessary for part 5 "
-
-  $CP ${path_5}/veg_${MM}_HR  veg_HR
-  $CP ${path_5}/lai_${MM}_HR  lai_HR
+  \cp veg_${MM}_HR  veg_HR
+  \cp lai_${MM}_HR  lai_HR
 
   echo " Run part 5 "
 
@@ -359,16 +385,11 @@ for MM in 01 ; do
 
   echo " Get input monthly files necessary for part 6 "
 
-  $CP ${path_6}/tpl_${MM}_GL.gz  tsl_GL.gz
-  $CP ${path_6}/tpl_${MM}_GL.gz  tpl_GL.gz
-  $CP ${path_6}/wpl_${MM}_GL.gz  wsl_GL.gz
-  $CP ${path_6}/wpl_${MM}_GL.gz  wpl_GL.gz
-  $CP ${path_6}/snl_${MM}_GL.gz  snl_GL.gz
-  gzip -d  tsl_GL
-  gzip -d  tpl_GL
-  gzip -d  wsl_GL
-  gzip -d  wpl_GL
-  gzip -d  snl_GL
+  \cp tpl_${MM}_GL  tsl_GL
+  \cp tpl_${MM}_GL  tpl_GL
+  \cp wpl_${MM}_GL  wsl_GL
+  \cp wpl_${MM}_GL  wpl_GL
+  \cp snl_${MM}_GL  snl_GL
 
   echo " Run part 6 "
 
@@ -393,14 +414,12 @@ for MM in 01 ; do
     exit
   fi
 
-  \rm tsl_* tpl_* wsl_* wpl_* snl_*
+  \rm tsl_GL tpl_GL wsl_GL wpl_GL snl_GL
 
-
-  echo " Get input monthly files necessary for part 8 "
-
-  $CP ${FILE_PATH_DBASE8}/abc_quadra_${MM} abc_coef
 
   echo " Run part 8 "
+
+  \cp abc_quadra_${MM} abc_coef
 
   $CP namprovi_8 fort.4
   mpilaunch $MYOWNBIN
@@ -430,7 +449,7 @@ for MM in 01 ; do
 
   echo " Get input monthly files necessary for part 9 "
 
-  $CP ${FILE_PATH_DBASE9}/aero.tegen.m${MM}_GL aero_GL
+  \cp aero.tegen.m${MM}_GL aero_GL
 
   echo " Run part 9 "
 
