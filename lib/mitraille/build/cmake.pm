@@ -2,6 +2,7 @@ package mitraille::build::cmake;
 
 use File::Basename;
 use Data::Dumper;
+use Cwd;
 
 use strict;
 
@@ -20,11 +21,21 @@ sub getExecutablePath
   { 
     my $fh = 'FileHandle'->new ("<$self->{path}/build/install_manifest.txt")
           || 'FileHandle'->new ("<$self->{path}/install_manifest.txt");
-
-    <$fh> 
+    $fh ? <$fh>  : ()
   };
 
   chomp for (@install);
+
+  # Use build directory if not installed
+
+  unless (@install)
+    {
+      my $path = $self->{path};
+      for my $bin (<$path/bin/*>)
+        {
+          push @install, $bin;
+        }
+    }
 
   for my $path (@install)
     {

@@ -20,7 +20,7 @@ sub new
         {
           $class = 'mitraille::build::pack';
         }
-      elsif (-f "$args{path}/install_manifest.txt")
+      elsif ((-f "$args{path}/install_manifest.txt") || (-f "$args{path}/CMakeCache.txt"))
         {
           $class = 'mitraille::build::cmake';
         }
