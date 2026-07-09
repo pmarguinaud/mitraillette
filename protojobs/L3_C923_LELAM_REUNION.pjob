@@ -1,3 +1,6 @@
+
+# MITRAILLE PROFILE = tiny-manycore, TIME = 20
+
 #============================================================
 #------------------------------------------------------------
 # Configuration E923 (make climatologies)
@@ -8,6 +11,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf E923; make clim LELAM_REUNION                                                                      
+
 CNMEXPL=L3_C923_LELAM_REUNION
 
 TEMPLATE=$CNMEXPL
@@ -16,11 +21,10 @@ echo TEMPLATE=$TEMPLATE
 echo "@@ `date`"
 
 # Move on a workspace.
-export TEMPORAIRE=$TMP_LOC
-cd $TEMPORAIRE || exit
+cd $TMP_LOC
 
-MYOWNBIN=__my_own_bin__
-[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+MYOWNBIN=__my_own_pack__/bin/MASTERODB
+
 CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
@@ -30,11 +34,7 @@ DOMM='lelam_reunion'
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -46,7 +46,7 @@ sed \
  -e "s/__MP_TYPE__/$MP_TYPE/" \
  -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
  -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+ -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
 ${CNMEXPL}.nam > namprovi
 
 \cat < namprovi
@@ -58,7 +58,7 @@ sed \
  -e "s/__MP_TYPE__/$MP_TYPE/" \
  -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
  -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+ -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
 ${CNMEXPL}_quad.nam > namprovi_quad
 
 \cat < namprovi_quad
@@ -68,19 +68,7 @@ ${CNMEXPL}_quad.nam > namprovi_quad
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo " Get the executable file "
-echo ""
-set -x
-
-$CP $MYOWNBIN ARPEXE
-
-set +x
-echo ""
 echo " Do namelists for each job "
-echo ""
-set -x
 
 sed "s/ N923=0/ N923=1/" namprovi > namprovi_1_lin
 sed "s/ N923=0/ N923=1/" namprovi_quad > namprovi_1_quad
@@ -110,11 +98,7 @@ sed "s/ N923=0/ N923=9/" namprovi > namprovi_9
 #      *  Part 1     *
 #      ***************
 
-set +x
-echo ""
 echo " Get input files necessary for part 1 "
-echo ""
-set -x
 
 $CP ${FILE_PATH_DBASE1}/* .
 gzip -d Dh_over_Dx_Dh_over_Dy.gz
@@ -136,47 +120,28 @@ $CP PGDFILE_${DOMM}.fa   Neworog
 # Constants for RRTM radiation scheme: none
 # Constants for SRTM radiation scheme: none
 
-set +x
-echo ""
 echo " Run part 1 "
-echo ""
-set -x
 
 # -- Quadratic 
 
 \mv namprovi_1_quad fort.4
-$MPILAUNCH ./ARPEXE $ZOPT > lola
+mpilaunch $MYOWNBIN
 codrep=$?
 
-\rm fort.4
 ls -l
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
-\rm lola
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
-    \rm $file
   done
 fi
 
 if [ $codrep -ne 0 ] ;then
-  set +x
   echo "  >>>>>>>>>failed: part 1 quadratic "
-  set -x
   exit
 fi
 
@@ -185,38 +150,23 @@ fi
 # -- Linear
 
 \mv namprovi_1_lin fort.4
-$MPILAUNCH ./ARPEXE $ZOPT > lola
+mpilaunch $MYOWNBIN
 codrep=$?
 
-\rm fort.4
 ls -l
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
-\rm lola
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
-    \rm $file
   done
 fi
 
 if [ $codrep -ne 0 ] ;then
-  set +x
   echo "  >>>>>>>>>failed: part 1 linear "
-  set -x
   exit
 fi
 
@@ -229,11 +179,7 @@ ls -l
 #      *  Part 2     *
 #      ***************
 
-set +x
-echo ""
 echo " Get input files necessary for part 2 "
-echo ""
-set -x
 
 path_2=${FILE_PATH_DBASE2}
 $CP ${path_2}/itp_GL   itp_GL
@@ -245,105 +191,62 @@ $CP ${path_2}/sab_GL   sab_GL
 $CP ${path_2}/vgx_GL   vgx_GL
 $CP ${path_2}/dpr_GL   dpr_GL
 
-set +x
-echo ""
 echo " Run part 2 "
-echo ""
-set -x
 
 \mv namprovi_2 fort.4
-$MPILAUNCH ./ARPEXE $ZOPT > lola
+mpilaunch $MYOWNBIN
 codrep=$?
 
-\rm fort.4
 ls -l
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
-\rm lola
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
-    \rm $file
   done
 fi
 
 if [ $codrep -ne 0 ] ;then
-  set +x
   echo "  >>>>>>>>>failed: part 2 "
-  set -x
   exit
 fi
 
-\rm *_GL
 ls -l
 
 #      ***************
 #      *  Part 3     *
 #      ***************
 
-set +x
-echo ""
 echo " Get input files necessary for part 3 "
-echo ""
-set -x
 
 $CP ${FILE_PATH_DBASE3}/N108_GL  N108_GL
 for MM in 01 02 03 04 05 06 07 08 09 10 11 12 ; do
   $CP  Const.Clim  Const.Clim.${MM}
 done
 
-set +x
-echo ""
 echo " Run part 3 "
-echo ""
-set -x
 
 \mv namprovi_3 fort.4
-$MPILAUNCH ./ARPEXE $ZOPT > lola
+mpilaunch $MYOWNBIN
 codrep=$?
 
-\rm fort.4
 ls -l
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
-\rm lola
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file"
-    echo ""
-    set -x
     \cat $file
-    \rm $file
   done
 fi
 
 if [ $codrep -ne 0 ] ;then
-  set +x
   echo "  >>>>>>>>>failed: part 3 "
-  set -x
   exit
 fi
 
@@ -354,11 +257,7 @@ ls -l
 #      *  Parts 4 to 9  *
 #      ******************
 
-set +x
-echo ""
 echo " Get input files necessary for parts 4 to 6 (those which do not depend on the month) "
-echo ""
-set -x
 
 $CP ${path_2}/z0v_GL  z0v_GL
 $CP ${path_2}/alv_GL  alv_GL
@@ -380,125 +279,71 @@ gzip -d  rel_GL.gz
 #for MM in 01 02 03 04 05 06 07 08 09 10 11 12 ; do
 for MM in 01 ; do
 
-  set +x
-  echo ""
   echo " Month $MM "
-  echo ""
-  set -x
 
-  set +x
-  echo ""
   echo " Get input monthly files necessary for part 4 "
-  echo ""
-  set -x
 
   \mv  Const.Clim.${MM}  Const.Clim
 
   $CP ${path_2}/veg${MM}_GL  veg_GL
   $CP ${path_2}/lai${MM}_GL  lai_GL
 
-  set +x
-  echo ""
   echo " Run part 4 "
-  echo ""
-  set -x
 
   $CP namprovi_4 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
-  set +x
-  echo ""
-  echo " Expand file lola"
-  echo ""
-  set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
     for file in NODE*
     do
-      set +x
-      echo ""
       echo " Expand file $file"
-      echo ""
-      set -x
       \cat $file
-      \rm $file
     done
   fi
 
   if [ $codrep -ne 0 ] ;then
-    set +x
     echo "  >>>>>>>>>failed: part 4 "
-    set -x
     exit
   fi
 
   \rm veg_GL lai_GL
 
-  set +x
-  echo ""
   echo " Get input monthly files necessary for part 5 "
-  echo ""
-  set -x
 
   $CP ${path_5}/veg_${MM}_HR  veg_HR
   $CP ${path_5}/lai_${MM}_HR  lai_HR
 
-  set +x
-  echo ""
   echo " Run part 5 "
-  echo ""
-  set -x
 
   $CP namprovi_5 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
-  set +x
-  echo ""
-  echo " Expand file lola"
-  echo ""
-  set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
     for file in NODE*
     do
-      set +x
-      echo ""
       echo " Expand file $file"
-      echo ""
-      set -x
       \cat $file
-      \rm $file
     done
   fi
 
   if [ $codrep -ne 0 ] ;then
-    set +x
     echo "  >>>>>>>>>failed: part 5 "
-    set -x
     exit
   fi
 
   \rm veg_HR lai_HR
 
-  set +x
-  echo ""
   echo " Get input monthly files necessary for part 6 "
-  echo ""
-  set -x
 
   $CP ${path_6}/tpl_${MM}_GL.gz  tsl_GL.gz
   $CP ${path_6}/tpl_${MM}_GL.gz  tpl_GL.gz
@@ -511,98 +356,56 @@ for MM in 01 ; do
   gzip -d  wpl_GL
   gzip -d  snl_GL
 
-  set +x
-  echo ""
   echo " Run part 6 "
-  echo ""
-  set -x
 
   $CP namprovi_6 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
-  set +x
-  echo ""
-  echo " Expand file lola"
-  echo ""
-  set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
     for file in NODE*
     do
-      set +x
-      echo ""
       echo " Expand file $file"
-      echo ""
-      set -x
       \cat $file
-      \rm $file
     done
   fi
 
   if [ $codrep -ne 0 ] ;then
-    set +x
     echo "  >>>>>>>>>failed: part 6 "
-    set -x
     exit
   fi
 
   \rm tsl_* tpl_* wsl_* wpl_* snl_*
 
 
-  set +x
-  echo ""
   echo " Get input monthly files necessary for part 8 "
-  echo ""
-  set -x
 
   $CP ${FILE_PATH_DBASE8}/abc_quadra_${MM} abc_coef
 
-  set +x
-  echo ""
   echo " Run part 8 "
-  echo ""
-  set -x
 
   $CP namprovi_8 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
-  set +x
-  echo ""
-  echo " Expand file lola"
-  echo ""
-  set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
     for file in NODE*
     do
-      set +x
-      echo ""
       echo " Expand file $file"
-      echo ""
-      set -x
       \cat $file
-      \rm $file
     done
   fi
 
   if [ $codrep -ne 0 ] ;then
-    set +x
     echo "  >>>>>>>>>failed: part 8 "
-    set -x
     exit
   else
     echo "  OZONE OK "
@@ -611,53 +414,30 @@ for MM in 01 ; do
   \rm abc_coef
 
 
-  set +x
-  echo ""
   echo " Get input monthly files necessary for part 9 "
-  echo ""
-  set -x
 
   $CP ${FILE_PATH_DBASE9}/aero.tegen.m${MM}_GL aero_GL
 
-  set +x
-  echo ""
   echo " Run part 9 "
-  echo ""
-  set -x
 
   $CP namprovi_9 fort.4
-  $MPILAUNCH ./ARPEXE $ZOPT > lola
+  mpilaunch $MYOWNBIN
   codrep=$?
 
-  \rm fort.4
   ls -l
 
-  set +x
-  echo ""
-  echo " Expand file lola"
-  echo ""
-  set -x
-  \cat lola
-  \rm lola
 
   if [ -a NODE.001_01 ]
   then
     for file in NODE*
     do
-      set +x
-      echo ""
       echo " Expand file $file"
-      echo ""
-      set -x
       \cat $file
-      \rm $file
     done
   fi
 
   if [ $codrep -ne 0 ] ;then
-    set +x
     echo "  >>>>>>>>>failed: part 9 "
-    set -x
     exit
   else
     echo "  aerosols OK "
@@ -665,35 +445,8 @@ for MM in 01 ; do
 
   \rm aero_GL
 
-
-  #      ***********************************
-  #      *  Save model results             *
-  #      ***********************************
-
-  set +x
-  echo ""
-  echo " Write output monthly climatologies "
-  echo ""
-  set -x
-
-  OUTNAME="${CNMEXPL}"
-
-  \mv Const.Clim Const.Clim.${MM}
-  $CP Const.Clim.${MM} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__${DOMM}_m${MM}_mitrail
-
 done
 
-set +x
-echo ""
-echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
-\rm *
-
-#      Launch the following job
-
-cd __mitra_home__
-[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
 echo "@@ `date`"

@@ -94,7 +94,7 @@
  /
  &NAMCT0
    LAROME=.TRUE.,
-   CNPPATH='.',
+   CNPPATH=".",
    LFDBOP=.FALSE.,
    LFBDAP=.TRUE.,
    LSFORC=.TRUE.,

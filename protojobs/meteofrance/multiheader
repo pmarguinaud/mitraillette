@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH -p normal256
+#SBATCH -J __jobname__
+#SBATCH --nodes=__nb_nodes__
+#SBATCH --time "__job_walltime__"
+#SBATCH --exclusiv
+#SBATCH -o __jobname__.o%j
+
+NNODE_FC=__nnode_fc__
+NTASK_FC=__ntask_fc__
+NOPMP_FC=__nopmp_fc__
+
+let "NPROC=$NNODE_FC*$NTASK_FC"
+
+NNODE_IO=__nnode_io__
+NTASK_IO=__ntask_io__
+NOPMP_IO=__nopmp_io__
+
+if [ $NTASK_IO -eq 0 ]
+then
+  NTASK_IO=1
+fi
+
+let "NPROC_IO=$NNODE_IO*$NTASK_IO"
+

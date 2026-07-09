@@ -1,3 +1,6 @@
+
+# MITRAILLE PROFILE = small, TIME = 10
+
 #============================================================
 #------------------------------------------------------------
 # Configuration 001HYD (forecast)
@@ -15,6 +18,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf IFS 001HYD sl2tl adiab TCO399; no DFI; VFD; no SLHD; LVERTFE=.FALSE., LSLONDEM_SPLIT=.true.        
+
 CNMEXPL=GE_FCST_HYD_SL2_VFD_ADIAB_SLXYZ_SPLIT_TCO399
 
 TEMPLATE=$CNMEXPL
@@ -23,11 +28,10 @@ echo TEMPLATE=$TEMPLATE
 echo "@@ `date`"
 
 # Move on a workspace.
-export TEMPORAIRE=$TMP_LOC
-cd $TEMPORAIRE || exit
+cd $TMP_LOC
 
-MYOWNBIN=__my_own_bin__
-[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+MYOWNBIN=__my_own_pack__/bin/MASTERODB
+
 CYCLE='__v_cycle__'
 CNMEXPS="i61v"
 
@@ -39,11 +43,7 @@ ijj=22
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -55,7 +55,7 @@ sed \
  -e "s/__MP_TYPE__/$MP_TYPE/" \
  -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
  -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+ -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
 ${CNMEXPL}.nam > namprovi
 
 \cat < namprovi
@@ -64,11 +64,7 @@ ${CNMEXPL}.nam > namprovi
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 # Initial conditions:
 IFS_DATA=${FILE_PATH_IFS}
@@ -90,96 +86,34 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo " Get the executable file "
-echo ""
-set -x
-$CP $MYOWNBIN ARPEXE
 
-grib_api_prefix=$(ldd ARPEXE  | perl -ne ' 
+grib_api_prefix=$(ldd $MYOWNBIN  | perl -ne ' 
  next unless (m/libeccodes_f90/o); 
  my ($path) = (m/=>\s+(\S+)/o); 
  use File::Basename; 
  print &dirname (&dirname ($path)), "\n" ')
 
-export ECCODES_SAMPLES_PATH=$grib_api_prefix/share/eccodes/ifs_samples/grib1_mlgrib2/
+export ECCODES_SAMPLES_PATH=$grib_api_prefix/share/eccodes/ifs_samples/grib1_mlgrib2:/MEMFS/ifs_samples/grib1_mlgrib2
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 $CP namprovi fort.4
 
-set +x
-echo ""
 echo " Job running "
-echo ""
-set -x
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
-\rm fort.4
 ls -l
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file "
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
-set +x
-echo ""
-echo " Expand file ifs.stat "
-echo ""
-set -x
-\cat ifs.stat
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-set +x
-echo ""
-echo " Save model results "
-echo ""
-set -x
-
-OUTNAME="${CNMEXPL}"
-
-# Historic files:
-#for iech in 06 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96
-for iech in 48
-do
-  $CP ICMSH${CNMEXPS}+0000${iech} ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__ech00${iech}.HIST
-done
-
-set +x
-echo ""
-echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
-\rm *
-
-#      Launch the following job
-
-cd __mitra_home__
-[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
 echo "@@ `date`"

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+. ~/.mitraille_profile
+
+exec $0.pl $*

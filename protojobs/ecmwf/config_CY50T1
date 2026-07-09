@@ -1,18 +1,21 @@
-#
-# Mitraillette configuration file for BELENOS (V122019)
-#
 
-#unchained jobs or not?
-MIT_UNCHAINED_JOB="__mit_unchained_job__"
+set -e
+set -E
+
+trap 'echo "FAILED at line $LINENO" ; showslurminfo ; exit 1' ERR
+trap 'echo "CANCELLED"; showslurminfo ; exit 1' TERM
+
+set -x
+
+#
+# Mitraillette configuration file for ECMWF cluster
+#
 
 # where the io_serv tools are
-IO_SERV_TOOLS_DIR=$MIT_INSTALL_DIR/io_serv_tools
+IO_SERV_TOOLS_DIR=__mit_install_dir__/io_serv_tools
 
 # Where to store the output files
 WORKDIR=${SCRATCH}
-
-# Where to put your modified job* files, i.e. the chain-files
-# MITRA_HOME is defined in mitraillette.x as your pwd
 
 if [ "x$STARTTIME" != "x" ]
 then
@@ -20,12 +23,15 @@ TMP_LOC=$SCRATCH/tmp/mitraille.${SLURM_JOBID}.${STARTTIME}
 else
 TMP_LOC=$SCRATCH/tmp/mitraille.${SLURM_JOBID}
 fi
+
+\rm -rf $TMP_LOC/*
 mkdir -p $TMP_LOC
+
 # Location of input data: cycle independent data
 # FILE_PATH_DBASE.. for databases to use conf 923.
 # FILE_PATH for other files.
-INPUTFILES_HOME=/perm/soa1/mitraillette/mitraillette-data/
-INPUTFILES_WORKDIR=/perm/soa1/mitraillette/mitraillette-data/
+INPUTFILES_HOME=/perm/sor/mitraillette-data/
+INPUTFILES_WORKDIR=/perm/sor/mitraillette-data/
 # - for regular validation
 FILE_PATH=${INPUTFILES_HOME}/anal_mitraille
 FILE_PATH_DILA=${INPUTFILES_HOME}/dila
@@ -36,6 +42,7 @@ FILE_PATH_DBASE5=${INPUTFILES_HOME}/const/923N/SURFACE_L/EUROPEb_v1/i3e
 FILE_PATH_DBASE6=${INPUTFILES_HOME}/const/923N/CLIM_G/version2/i3e
 FILE_PATH_DBASE8=${INPUTFILES_HOME}/const/923N/CLIM_G/ozone/ascii
 FILE_PATH_DBASE9=${INPUTFILES_HOME}/const/923N/CLIM_G/aerosols/ascii
+FILE_PATH_IFS=${INPUTFILES_HOME}/ifs-tco399
 # - for scientific tests
 FILE_PATH_EXPS=${INPUTFILES_WORKDIR}
 
@@ -50,10 +57,10 @@ FILE_PATH_PGD=${INPUTFILES_HOME}/const/mesonh/PGD/V02
 
 # Definition of cp/ecp for files and namelists
 # - for files which are on the local machine.
-CP="/usr/bin/cp"    # 'ln -s' is forbidden for this command
+CP="copy"    # 'ln -s' is forbidden for this command
 # - for files which may be either on a storage machine or on the local machine.
 ## ECP="/bin/cp"   # 'ln -s' is allowed for this command
-ECP="ln -s"   # 'ln -s' is allowed for this command
+ECP="ln -sf"   # 'ln -s' is allowed for this command
 
 # io_serv tools
 # LFITOOLS
@@ -62,16 +69,72 @@ EXEC_IFSAUX_LFITOOLS=/perm/soa1/mitraille/io_serv_tools/lfitools_cy50t1rc.OMPIIF
 # IO POLL, recombining fields after io_serv
 IOPOLL="$IO_SERV_TOOLS_DIR/io_poll"
 # LFI copy, with repacking
-LFICP="$IO_SERV_TOOLS_DIR/lfi_copy -pack -force"
+LFICP="lficp"
 # LFI move, with repacking
-LFIMV="$IO_SERV_TOOLS_DIR/lfi_move -pack -force"
+LFIMV="lfimv"
 
 # Batch and MPI launch definitions
 SUBMIT=/usr/local/bin/sbatch
-MPILAUNCH="time /home/sor/install/mpiauto/mpiauto --verbose --wrap-stdeo --wrap -np $MPI_TASKS -nnp $MPITASKS_PER_NODE --"
+
+function lfimv
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_move -pack -force $s $d
+}
+
+function lficp
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_copy -pack -force $s $d
+}
+
+function copy
+{
+  d="${!#}"
+  set -- "${@:1:$#-1}"
+
+  for s in $*
+  do
+    mkdir -p $(dirname $d)
+    /bin/cp $s $d
+  done
+}
+
+function mpilaunch 
+{
+  bin=$(dirname $1)
+  prefix=$(dirname $bin)
+
+  if [ -f "$prefix/mitpack.sh" ]
+  then
+    source "$prefix/mitpack.sh"
+  fi
+
+  ls -d ./* > dirlst
+
+  time \
+    /home/sor/install/mpiauto/mpiauto \
+    --verbose --wrap --wrap-stdeo \
+        -nn $NNODE_FC -nnp $NTASK_FC -openmp $NOPMP_FC -- $* \
+    --  -nn $NNODE_IO -nnp $NTASK_IO -openmp $NOPMP_IO -- $* 
+}
+
+function showslurminfo
+{
+if [ "x$STARTTIME" != "x" ]
+then
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages --starttime $STARTTIME
+else
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages
+fi
+}
 
 # xpnam
-XPNAM=/perm/soa1/xpnam/bin/xpnam
+XPNAM=__mit_install_dir__/bin/xpnam
 
 # Machine-depending namelist variables
 LOPT_SCALAR=.TRUE.
@@ -80,7 +143,6 @@ NCOMBFLEN=1800000
 MP_TYPE=2
 
 # BULL specific environment variables
-set -x
 ulimit -s unlimited
 module purge
 
@@ -95,15 +157,14 @@ export KMP_MONITOR_STACKSIZE=1G
 export EC_MPI_ATEXIT=0
 export EC_PROFILE_HEAP=0
 export MPIAUTOCONFIG=mpiauto.TIME.conf
-export OMP_NUM_THREADS=__nb_threads__
+
 export DR_HOOK=1
 export DR_HOOK_IGNORE_SIGNALS=-1
 export DR_HOOK_SILENT=1
 export DR_HOOK_OPT=prof
 export MPL_MBX_SIZE=2048000000
 export LFITOOLS=$EXEC_IFSAUX_LFITOOLS
-export KMP_AFFINITY="verbose,compact,granularity=fine"
-#export KMP_AFFINITY="compact,granularity=fine"
+export KMP_AFFINITY="compact,granularity=fine"
 export KMP_BLOCKTIME=12
 export OMP_WAIT_POLICY=ACTIVE
 

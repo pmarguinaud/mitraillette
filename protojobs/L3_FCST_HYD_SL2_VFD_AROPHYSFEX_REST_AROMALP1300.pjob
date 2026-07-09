@@ -1,3 +1,6 @@
+
+# MITRAILLE PROFILE = medium, TIME = 30
+
 #============================================================
 #------------------------------------------------------------
 # Configuration 001HYD (AROME type forecast)
@@ -17,6 +20,8 @@
 #------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD sl2tl (cf. AROME); no DFI; SI with SETTLS; restart                                          
+
 CNMEXPL=L3_FCST_HYD_SL2_VFD_AROPHYSFEX_REST_AROMALP1300
 
 TEMPLATE=$CNMEXPL
@@ -25,11 +30,10 @@ echo TEMPLATE=$TEMPLATE
 echo "@@ `date`"
 
 # Move on a workspace.
-export TEMPORAIRE=$TMP_LOC
-cd $TEMPORAIRE || exit
+cd $TMP_LOC
 
-MYOWNBIN=__my_own_bin__
-[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+MYOWNBIN=__my_own_pack__/bin/MASTERODB
+
 CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
@@ -37,11 +41,7 @@ CNMEXPS="ARPE"
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -68,7 +68,7 @@ sed \
  -e "s/__MP_TYPE__/$MP_TYPE/" \
  -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
  -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+ -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
 ${CNMEXPL}.nam > namprovi
 
 \cat < namprovi
@@ -78,11 +78,7 @@ ${CNMEXPL}.nam > namprovi
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 # Initial conditions:
 $ECP ${FILE_PATH}/AROMALP1300_20160604r12_INIT ICMSH${CNMEXPS}INIT
@@ -125,14 +121,6 @@ $ECP ${FILE_PATH_RRTMCST}/* .
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo " Get the executable file "
-echo ""
-set -x
-$CP $MYOWNBIN ARPEXE
-
-
 # Create SURFEX climatology and initial condition file with latest version
 
 $CP namprovi fort.4
@@ -141,29 +129,17 @@ $CP arome.selnam_exseg1 EXSEG1.nam
 $XPNAM --dfile="${CNMEXPL}_CONVPGD.nam.diff" --inplace fort.4
 $XPNAM --dfile="arome_CONVPGD.selnam_exseg1.diff" --inplace EXSEG1.nam
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
 
 ls -l ICMSH${CNMEXPS}+0000.sfx ICMSH${CNMEXPS}+0000
 \mv ICMSH${CNMEXPS}+0000.sfx Const.Clim.sfx.new
 
 $XPNAM --dfile="${CNMEXPL}_CONVPREP.nam.diff" --inplace fort.4
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 \mv ICMSH${CNMEXPS}+0000.sfx ICMSH${CNMEXPS}INIT.sfx.new
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
 
 # Reset namelist; forecast up to step 432, dump restart files at step 323, output historic file at step 432
 
@@ -210,7 +186,7 @@ EOF
 
 # Run model, produce restart files at step 323
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
 # Keep interesting files
 for f in NODE.001_01 ICMSH${CNMEXPS}+????
@@ -218,18 +194,12 @@ do
   \mv $f $f.0
 done
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
 
 \ls -l
 
 # Restart model from step 323 up to step 432
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
 # Keep interesting files
 
@@ -238,42 +208,17 @@ do
   \mv $f $f.1
 done
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
 
 \ls -l
 
 (
   export DR_HOOK=0
   export DR_HOOK_NOT_MPI=1 
-  set +x
-  echo ""
   echo " Differences between non-interrupted forecast and restarted forecast -------------------------------- "
-  echo ""
-  set -x
   $LFITOOLS lfidiff --lfi-file-1  ICMSH${CNMEXPS}+0432.0 --lfi-file-2 ICMSH${CNMEXPS}+0432.1
-  set +x
-  echo ""
   echo " End of differences --------------------------------------------------------------------------------- "
-  echo ""
-  set -x
 )
 
-set +x
-echo ""
-echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
-\rm *
-
-#      Launch the following job
-
-cd __mitra_home__
-[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
 echo "@@ `date`"

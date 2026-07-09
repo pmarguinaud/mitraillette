@@ -1,3 +1,6 @@
+
+# MITRAILLE PROFILE = medium, TIME = 10
+
 #============================================================
 #------------------------------------------------------------------------
 # Off-line FULLPOS
@@ -7,6 +10,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
+# MITRAILLE COMMENT: Conf 001HYD FPOS (makes filtering matrices; input RD matrices); CFPFMT=LALON; OFF-LINE                  
+
 CNMEXPL=GM_FPMF_HYD_GPLALON_INRD
 
 TEMPLATE=$CNMEXPL
@@ -15,11 +20,10 @@ echo TEMPLATE=$TEMPLATE
 echo "@@ `date`"
 
 # Move on a workspace.
-export TEMPORAIRE=$TMP_LOC
-cd $TEMPORAIRE || exit
+cd $TMP_LOC
 
-MYOWNBIN=__my_own_bin__
-[ -n "$MY_PRIORITY_MIT_EXE" ] && MYOWNBIN=$MY_PRIORITY_MIT_EXE
+MYOWNBIN=__my_own_pack__/bin/MASTERODB
+
 CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
@@ -27,11 +31,7 @@ CNMEXPS="ARPE"
 #       *  Get the namelist              *
 #       **********************************
 
-set +x
-echo ""
 echo " Get the namelist "
-echo ""
-set -x
 
 VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
 echo $VERSION
@@ -43,7 +43,7 @@ sed \
  -e "s/__MP_TYPE__/$MP_TYPE/" \
  -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
  -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/__nb_proc_io__/" -e "s/__NTASKS__/__ntasks__/" \
+ -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
 ${CNMEXPL}.nam > namprovi
 
 \cat < namprovi
@@ -52,11 +52,7 @@ ${CNMEXPL}.nam > namprovi
 #      *  Get input files.                                 *
 #      *****************************************************
 
-set +x
-echo ""
 echo " Get input files "
-echo ""
-set -x
 
 # Initial conditions: none
 # Constants for RRTM radiation scheme: none
@@ -79,88 +75,28 @@ $ECP ${FILE_PATH}/clim_dap.eurat01.01.m01 const.clim.EURAT01
 #      *  Execution  *
 #      ***************
 
-set +x
-echo ""
-echo " Get the executable file "
-echo ""
-set -x
-$CP $MYOWNBIN ARPEXE
 
-set +x
-echo ""
 echo " Copy namelist on fort.4 "
-echo ""
-set -x
 $CP namprovi fort.4
 
-set +x
-echo ""
 echo " Job running "
-echo ""
-set -x
 
-$MPILAUNCH ./ARPEXE $ZOPT >lola 2>&1
+mpilaunch $MYOWNBIN
 
-\rm fort.4
 ls -l
 
-set +x
-echo ""
-echo " Expand file lola"
-echo ""
-set -x
-\cat lola
 
 if [ -a NODE.001_01 ]
 then
   for file in NODE*
   do
-    set +x
-    echo ""
     echo " Expand file $file "
-    echo ""
-    set -x
     \cat $file
   done
 fi
 
-set +x
-echo ""
-echo " Expand file ifs.stat "
-echo ""
-set -x
-\cat ifs.stat
-
-#      ***********************************
-#      *  Save model results             *
-#      ***********************************
-
-set +x
-echo ""
-echo " Save model results "
-echo ""
-set -x
-
-OUTNAME="${CNMEXPL}"
-
 # Filtering matrices:
-$CP matrix.fil.GLOB25 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.glob25.07
-$CP matrix.fil.GLOB15 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.glob15.07
-$CP matrix.fil.GLOB05 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.glob05.07
-$CP matrix.fil.EUROC25 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.euroc25.08
-$CP matrix.fil.EURAT01 ${WORKDIR}/OUTPUT_FILES/${CYCLE}/mitraille___mitra_pid__/${OUTNAME}__mat.filter.eurat01.01
 
-set +x
-echo ""
-echo " Present files on the workdir $TEMPORAIRE "
-echo ""
-set -x
 ls -l
 
-\rm *
-
-#      Launch the following job
-
-cd __mitra_home__
-[ ! -n "$MIT_UNCHAINED_JOB" ] && ./test.x__mitra_pid__ 
 echo "@@ `date`"

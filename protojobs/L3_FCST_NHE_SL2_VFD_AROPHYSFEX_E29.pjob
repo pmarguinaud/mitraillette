@@ -1,0 +1,130 @@
+
+# MITRAILLE PROFILE = small, TIME = 10
+
+# MITRAILLE COMMENT: Conf 001NHE sl2tl (cf. AROME); small resolution
+
+CNMEXPL=L3_FCST_NHE_SL2_VFD_AROPHYSFEX_E29
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+cd $TMP_LOC
+
+MYOWNBIN=__my_own_pack__/bin/MASTERODB
+
+CYCLE='__v_cycle__'
+CNMEXPS="ARPE"
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+echo " Get the namelist "
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+
+$CP ${NAM_PATH}/${CNMEXPL}.selnam_fp_0 selectfp0
+$CP selectfp0 xxt00000000
+
+$CP ${NAM_PATH}/${CNMEXPL}.selnam_fp_3 selectfp3
+
+for i in $(seq 1 6)
+do
+$CP selectfp3 xxt00000${i}00
+done
+
+$CP ${NAM_PATH}/namel_previ_surfex.48 EXSEG1.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
+${CNMEXPL}.nam > namprovi
+
+\cat < namprovi
+\cat < EXSEG1.nam
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+echo " Get input files "
+
+# Initial conditions:
+$ECP ${FILE_PATH}/e29/ICMSH0000INIT ICMSH${CNMEXPS}INIT
+
+# LBC:
+for iech in 00 01 02 03 04 05 06
+do
+ case $iech in
+   00) icoupl='000' ;;
+   01) icoupl='001' ;;
+   02) icoupl='002' ;;
+   03) icoupl='003' ;;
+   04) icoupl='004' ;;
+   05) icoupl='005' ;;
+   06) icoupl='006' ;;
+ esac
+ $ECP ${FILE_PATH}/e29/ELSCF0000ALBC${icoupl}  ELSCF${CNMEXPS}ALBC${icoupl}
+done
+
+# departure climatology for in-line FULL-POS:
+$ECP ${FILE_PATH}/e29/Const.Clim Const.Clim
+
+# arrival climatology for in-line FULL-POS:
+$ECP ${FILE_PATH}/e29/const.clim.FRANGP0025 const.clim.FRANGP0025
+
+# Files for SURFEX:
+$ECP ${FILE_PATH}/e29/ICMSH0000INIT.sfx ICMSH${CNMEXPS}INIT.sfx
+$ECP ${FILE_PATH}/e29/Const.Clim.sfx Const.Clim.sfx
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapI_covers_param.bin ecoclimapI_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_af_covers_param.bin ecoclimapII_af_covers_param.bin
+$ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_covers_param.bin
+
+# Constants for RRTM radiation scheme:
+$ECP ${FILE_PATH_RRTMCST}/* .
+
+# Constants for SRTM radiation scheme: not used currently
+##neu $ECP ${FILE_PATH_SRTMCST}/* .
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+
+echo " Copy namelist on fort.4 "
+$CP namprovi fort.4
+
+echo " Job running "
+
+mpilaunch $MYOWNBIN
+
+ls -l
+
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    echo " Expand file $file"
+    \cat $file
+  done
+fi
+
+if [ -a OUTPUT_LISTING ]
+then
+  echo " Expand file OUTPUT_LISTING "
+  \cat OUTPUT_LISTING
+fi
+
+ls -l
+
+echo "@@ `date`"

@@ -1,1 +1,0 @@
-sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages

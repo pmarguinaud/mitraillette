@@ -256,7 +256,7 @@
    NFRGDI=1,
    NGDITS(0)=-1,
    NGDITS(1)=0,
-   CNPPATH='.',
+   CNPPATH=".",
    CFPNCF='ECHFP',
    NFPOS=1,
    NPOSTS(0)=-32,

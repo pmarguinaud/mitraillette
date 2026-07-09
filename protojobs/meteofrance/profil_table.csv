@@ -1,0 +1,11 @@
+job_name                                                    ;walltime  ;nnode_fc  ;ntask_fc  ;nopmp_fc  ;nnode_io  ;ntask_io  ;nopmp_io  ;
+tiny-singlecore                                             ;         0;         1;         1;         1;         0;         0;         0;
+tiny-manycore                                               ;         0;         1;         1;       128;         0;         0;         0;
+small                                                       ;         0;         2;        16;         8;         0;         0;         0;
+small2                                                      ;         0;         4;        16;         8;         0;         0;         0;
+medium                                                      ;         0;         8;        16;         8;         0;         0;         0;
+medium-io                                                   ;         0;         7;        16;         8;         1;         8;        16;
+medium2                                                     ;         0;        16;        16;         8;         0;         0;         0;
+big                                                         ;         0;        24;        16;         8;         0;         0;         0;
+big-io                                                      ;         0;        23;        16;         8;         1;         8;        16;
+huge                                                        ;         0;       100;        16;         8;         0;         0;         0;

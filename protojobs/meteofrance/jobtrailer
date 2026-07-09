@@ -1,0 +1,6 @@
+
+sleep 2
+
+echo COMPLETED
+
+showslurminfo

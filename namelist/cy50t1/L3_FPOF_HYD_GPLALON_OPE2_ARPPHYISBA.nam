@@ -111,7 +111,7 @@
  &NAMCOSJO
  /
  &NAMCT0
-   CNPPATH='.',
+   CNPPATH=".",
    NSPPR=0,
    NFPOS=1,
    LGRIB_API=.FALSE.,

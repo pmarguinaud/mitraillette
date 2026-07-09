@@ -82,7 +82,7 @@
  &NAMCOSJO
  /
  &NAMCT0
-   CNPPATH='.',
+   CNPPATH=".",
    NFRHIS=1,
    NHISTS(0)=4,
    NHISTS(1)=200,

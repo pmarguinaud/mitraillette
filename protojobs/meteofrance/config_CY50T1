@@ -1,0 +1,179 @@
+
+set -e
+set -E
+
+trap 'echo "FAILED at line $LINENO" ; showslurminfo ; exit 1' ERR
+trap 'echo "CANCELLED"; showslurminfo ; exit 1' TERM
+
+set -x
+
+#
+# Mitraillette configuration file for BELENOS (V102025)
+#
+
+# where the io_serv tools are
+IO_SERV_TOOLS_DIR=__mit_install_dir__/io_serv_tools
+
+# Where to store the output files
+WORKDIR=/scratch/work/${USER}
+
+if [ "x$STARTTIME" != "x" ]
+then
+TMP_LOC=$TMPDIR/tmp/mitraille.${SLURM_JOBID}.${STARTTIME}
+else
+TMP_LOC=$TMPDIR/tmp/mitraille.${SLURM_JOBID}
+fi
+
+\rm -rf $TMP_LOC/*
+mkdir -p $TMP_LOC
+
+# Location of input data: cycle independent data
+# FILE_PATH_DBASE.. for databases to use conf 923.
+# FILE_PATH for other files.
+
+KYHOME=/scratch/work/marguina/mitraillette-data
+KYWORKDIR=/scratch/work/marguina/mitraillette-data
+
+GCOHOME=/home/mf/dp/marp/gco
+INPUTFILES_HOME=${KYHOME} 
+INPUTFILES_WORKDIR=${KYWORKDIR} 
+# - for regular validation
+FILE_PATH=${INPUTFILES_HOME}/anal_mitraille
+FILE_PATH_DILA=${INPUTFILES_HOME}/dila
+FILE_PATH_DBASE1=${INPUTFILES_HOME}/const/923N/RELIEF_G/GTOPT030
+FILE_PATH_DBASE2=${INPUTFILES_HOME}/const/923N/SURFACE_G/version2/i3e
+FILE_PATH_DBASE3=${INPUTFILES_HOME}/const/923N/N108/i3e
+FILE_PATH_DBASE5=${INPUTFILES_HOME}/const/923N/SURFACE_L/EUROPEb_v1/i3e
+FILE_PATH_DBASE6=${INPUTFILES_HOME}/const/923N/CLIM_G/version2/i3e
+FILE_PATH_DBASE8=${INPUTFILES_HOME}/const/923N/CLIM_G/ozone/ascii
+FILE_PATH_DBASE9=${INPUTFILES_HOME}/const/923N/CLIM_G/aerosols/ascii
+FILE_PATH_IFS=${INPUTFILES_HOME}/ifs-tco399
+# - for scientific tests
+FILE_PATH_EXPS=${INPUTFILES_WORKDIR}
+
+# Location of input data: cycle dependent data
+# FILE_PATH_RRTMCST for constant files used in the RRTM radiation scheme.
+# FILE_PATH_ECOCLIMAP for "ecoclimap" files used in SURFEX.
+# FILE_PATH_PGD for databases to make PGD files.
+#FILE_PATH_RRTMCST=${INPUTFILES_HOME}/const/rrtm_cst/V02
+FILE_PATH_RRTMCST=${INPUTFILES_HOME}/const/rrtm_cst_cy47R1   ##netcdf files since cy47t1r1.v03 (= pre-cy48 v3)
+FILE_PATH_ECOCLIMAP=${INPUTFILES_HOME}/const/ecoclimap/V8.0
+FILE_PATH_PGD=${INPUTFILES_HOME}/const/mesonh/PGD/V02
+
+# Definition of cp/ecp for files and namelists
+# - for files which are on the local machine.
+CP="copy"    # 'ln -s' is forbidden for this command
+# - for files which may be either on a storage machine or on the local machine.
+## ECP="/bin/cp"   # 'ln -s' is allowed for this command
+ECP="ln -sf"   # 'ln -s' is allowed for this command
+
+# io_serv tools
+# LFITOOLS
+EXEC_IFSAUX_LFITOOLS=${GCOHOME}/tampon/bin/xrd/xr46/xr46t1_lfitools-bf.04.IMPIIFC1805.2y.exe
+# the following two need to export var LFITOOLS (done below)
+# IO POLL, recombining fields after io_serv
+IOPOLL="$IO_SERV_TOOLS_DIR/io_poll"
+# LFI copy, with repacking
+LFICP="lficp"
+# LFI move, with repacking
+LFIMV="lfimv"
+
+# Batch and MPI launch definitions
+SUBMIT=/usr/bin/sbatch
+
+function lfimv
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_move -pack -force $s $d
+}
+
+function lficp
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_copy -pack -force $s $d
+}
+
+function copy
+{
+  d="${!#}"
+  set -- "${@:1:$#-1}"
+
+  for s in $*
+  do
+    mkdir -p $(dirname $d)
+    /bin/cp $s $d
+  done
+}
+
+function mpilaunch 
+{
+  bin=$(dirname $1)
+  prefix=$(dirname $bin)
+
+  if [ -f "$prefix/mitpack.sh" ]
+  then
+    source "$prefix/mitpack.sh"
+  fi
+
+  ls -d ./* > dirlst
+
+  time \
+    /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto \
+    --verbose --wrap --wrap-stdeo \
+        -nn $NNODE_FC -nnp $NTASK_FC -openmp $NOPMP_FC -- $* \
+    --  -nn $NNODE_IO -nnp $NTASK_IO -openmp $NOPMP_IO -- $* 
+}
+
+function showslurminfo
+{
+if [ "x$STARTTIME" != "x" ]
+then
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages --starttime $STARTTIME
+else
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages
+fi
+}
+
+# xpnam
+XPNAM=__mit_install_dir__/bin/xpnam
+
+# Machine-depending namelist variables
+LOPT_SCALAR=.TRUE.
+MBX_SIZE=1024000000
+NCOMBFLEN=1800000
+MP_TYPE=2
+
+# BULL specific environment variables
+ulimit -s unlimited
+module purge
+
+#Oper settings for Intel MKL library
+# variables for perfect reproductibilty for some oper conf.
+export MKL_CBWR=AUTO,STRICT
+export MKL_DEBUG_CPU_TYPE=5
+
+export OMP_STACKSIZE=4G
+export KMP_STACKSIZE=4G
+export KMP_MONITOR_STACKSIZE=1G
+export EC_MPI_ATEXIT=0
+export EC_PROFILE_HEAP=0
+export MPIAUTOCONFIG=mpiauto.TIME.conf
+
+export DR_HOOK=1
+export DR_HOOK_IGNORE_SIGNALS=-1
+export DR_HOOK_SILENT=1
+export DR_HOOK_OPT=prof
+export MPL_MBX_SIZE=2048000000
+export LFITOOLS=$EXEC_IFSAUX_LFITOOLS
+export KMP_AFFINITY="compact,granularity=fine"
+export KMP_BLOCKTIME=12
+export OMP_WAIT_POLICY=ACTIVE
+
+
+export ZOPT="" # optimisation options when running.
+export EC_MEMINFO=0
+
