@@ -1,0 +1,112 @@
+
+# MITRAILLE PROFILE = small, TIME = 10
+
+#============================================================
+#------------------------------------------------------------
+# Configuration 001HYD (forecast)
+#  IFS forecast with physics.
+#  Upper-air physics: ECPHYS
+#  Dynamical core: thin-layer hydrostatic model.
+#  Advection: SL2TL
+#  Vertical discretisation: vertical finite differences (VFD)
+#  No initialisation
+#  IO server off.
+#  Standard Legendre transforms.
+#------------------------------------------------------------
+#============================================================
+
+# MITRAILLE COMMENT: Conf IFS 001HYD sl2tl diab TL21; no DFI; VFD; 
+
+CNMEXPL=GE_FCST_HYD_SL2_VFD_ECPHY_TL21
+
+TEMPLATE=$CNMEXPL
+echo TEMPLATE=$TEMPLATE
+
+echo "@@ `date`"
+
+# Move on a workspace.
+cd $TMP_LOC
+
+MYOWNBIN=__my_own_pack__/bin/MASTERODB
+
+CYCLE='__v_cycle__'
+CNMEXPS="FCST"
+
+#       **********************************
+#       *  Get the namelist              *
+#       **********************************
+
+echo " Get the namelist "
+
+VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
+echo $VERSION
+NAM_PATH=__nam_path__
+$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+
+sed \
+ -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
+ -e "s/__MP_TYPE__/$MP_TYPE/" \
+ -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
+ -e "s/__MBX_SIZE__/$MBX_SIZE/" \
+ -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
+${CNMEXPL}.nam > namprovi
+
+\cat < namprovi
+
+#      *****************************************************
+#      *  Get input files.                                 *
+#      *****************************************************
+
+echo " Get input files "
+
+# Initial conditions:
+IFS_DATA=${FILE_PATH_IFS}
+
+$ECP $IFS_DATA/ICMSHFCSTINIT  ICMSHFCSTINIT
+$ECP $IFS_DATA/ICMGGFCSTINIUA ICMGGFCSTINIUA
+$ECP $IFS_DATA/ICMGGFCSTINIT  ICMGGFCSTINIT
+
+# Clim data
+$ECP $IFS_DATA/399_4                                   399_4
+
+# Constants for RRTM radiation scheme:
+$ECP $IFS_DATA/total_solar_irradiance_CMIP6_49r1.nc    total_solar_irradiance_CMIP6_49r1.nc
+$ECP $IFS_DATA/aerosol_ifs_49R1_20230725.nc            aerosol_ifs_49R1_20230725.nc
+$ECP $IFS_DATA/aerosol_cams_climatology_43R3a.nc       aerosol_cams_climatology_43R3a.nc
+$ECP ${FILE_PATH_RRTMCST}/* .
+
+#      ***************
+#      *  Execution  *
+#      ***************
+
+
+grib_api_prefix=$(ldd $MYOWNBIN  | perl -ne ' 
+ next unless (m/libeccodes_f90/o); 
+ my ($path) = (m/=>\s+(\S+)/o); 
+ use File::Basename; 
+ print &dirname (&dirname ($path)), "\n" ')
+
+export ECCODES_SAMPLES_PATH=$grib_api_prefix/share/eccodes/ifs_samples/grib1_mlgrib2:/MEMFS/ifs_samples/grib1_mlgrib2
+
+echo " Copy namelist on fort.4 "
+$CP namprovi fort.4
+
+echo " Job running "
+
+mpilaunch $MYOWNBIN
+
+ls -l
+
+
+if [ -a NODE.001_01 ]
+then
+  for file in NODE*
+  do
+    echo " Expand file $file "
+    \cat $file
+  done
+fi
+
+ls -l
+
+echo "@@ `date`"
