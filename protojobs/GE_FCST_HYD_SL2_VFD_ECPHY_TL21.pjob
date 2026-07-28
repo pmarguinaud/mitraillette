@@ -62,17 +62,14 @@ echo " Get input files "
 # Initial conditions:
 IFS_DATA=${FILE_PATH_IFS}
 
-$ECP $IFS_DATA/ICMSHFCSTINIT  ICMSHFCSTINIT
-$ECP $IFS_DATA/ICMGGFCSTINIUA ICMGGFCSTINIUA
-$ECP $IFS_DATA/ICMGGFCSTINIT  ICMGGFCSTINIT
+$ECP $IFS_DATA/ICMSHT021INIT  ICMSHFCSTINIT
+$ECP $IFS_DATA/ICMGGT021INIUA ICMGGFCSTINIUA
+$ECP $IFS_DATA/ICMGGT021INIT  ICMGGFCSTINIT
 
 # Clim data
 $ECP $IFS_DATA/399_4                                   399_4
 
 # Constants for RRTM radiation scheme:
-$ECP $IFS_DATA/total_solar_irradiance_CMIP6_49r1.nc    total_solar_irradiance_CMIP6_49r1.nc
-$ECP $IFS_DATA/aerosol_ifs_49R1_20230725.nc            aerosol_ifs_49R1_20230725.nc
-$ECP $IFS_DATA/aerosol_cams_climatology_43R3a.nc       aerosol_cams_climatology_43R3a.nc
 $ECP ${FILE_PATH_RRTMCST}/* .
 
 #      ***************

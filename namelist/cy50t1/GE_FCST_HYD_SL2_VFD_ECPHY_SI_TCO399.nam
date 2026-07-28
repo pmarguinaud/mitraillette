@@ -174,7 +174,7 @@
 /
 &NAMARG
   NCONF=1,
-  CNMEXP='i61v',
+  CNMEXP='FCST',
 /
 &NAMRLX
 /
