@@ -51,21 +51,33 @@ NAM_PATH=__nam_path__
 $CP ${NAM_PATH}/${CNMEXPL}_fp.nam ${CNMEXPL}_fp.nam
 $CP ${NAM_PATH}/${CNMEXPL}_fc.nam ${CNMEXPL}_fc.nam
 
-sed \
- -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
- -e "s/__MP_TYPE__/$MP_TYPE/" \
- -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
- -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
-${CNMEXPL}_fp.nam > namprovi_fp
+$XPNAM --delta="
+&NAMPAR0
+  MBX_SIZE=$MBX_SIZE,
+  NPROC=$NPROC,
+  MP_TYPE=$MP_TYPE,
+  LOPT_SCALAR=$LOPT_SCALAR,
+/
+&NAMPAR1
+  NSTRIN=$NPROC,
+  NSTROUT=$NPROC,
+  NCOMBFLEN=$NCOMBFLEN,
+/
+" namprovi_fp=${CNMEXPL}_fp.nam
 
-sed \
- -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
- -e "s/__MP_TYPE__/$MP_TYPE/" \
- -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
- -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
-${CNMEXPL}_fc.nam > namprovi_fc
+$XPNAM --delta="
+&NAMPAR0
+  MBX_SIZE=$MBX_SIZE,
+  NPROC=$NPROC,
+  MP_TYPE=$MP_TYPE,
+  LOPT_SCALAR=$LOPT_SCALAR,
+/
+&NAMPAR1
+  NSTRIN=$NPROC,
+  NSTROUT=$NPROC,
+  NCOMBFLEN=$NCOMBFLEN,
+/
+" namprovi_fc=${CNMEXPL}_fc.nam
 
 $CP namprovi_fp namprovi0
 

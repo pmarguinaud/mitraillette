@@ -40,25 +40,23 @@ echo $VERSION
 NAM_PATH=__nam_path__
 $CP ${NAM_PATH}/${CNMEXPL}_lin.nam ${CNMEXPL}.nam
 
-sed \
- -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
- -e "s/__MP_TYPE__/$MP_TYPE/" \
- -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
- -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
-${CNMEXPL}.nam > namprovi
+$XPNAM --delta="
+&NAMPAR0
+  MBX_SIZE=$MBX_SIZE,
+  NPROC=$NPROC,
+/
+" namprovi=${CNMEXPL}.nam
 
 \cat < namprovi
 
 $CP ${NAM_PATH}/${CNMEXPL}_quad.nam ${CNMEXPL}_quad.nam
 
-sed \
- -e "s/__NCOMBFLEN__/$NCOMBFLEN/" \
- -e "s/__MP_TYPE__/$MP_TYPE/" \
- -e "s/__LOPT_SCALAR__/$LOPT_SCALAR/" \
- -e "s/__MBX_SIZE__/$MBX_SIZE/" \
- -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
-${CNMEXPL}_quad.nam > namprovi_quad
+$XPNAM --delta="
+&NAMPAR0
+  MBX_SIZE=$MBX_SIZE,
+  NPROC=$NPROC,
+/
+" namprovi_quad=${CNMEXPL}_quad.nam
 
 ## for increased output level     ##
 ## sed -e "s/NPRINTLEV=0/NPRINTLEV=1/" namprovi_quad > namprovi_prov
