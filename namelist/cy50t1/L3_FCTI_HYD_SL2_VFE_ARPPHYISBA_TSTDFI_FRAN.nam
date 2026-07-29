@@ -322,8 +322,6 @@
  /
  &NAMINI
    LDFI=.TRUE.,
-   LBIAS=_lbias_,
-   LINCR=_lincr_,
  /
  &NAMINTFLEX
  /

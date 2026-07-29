@@ -70,8 +70,19 @@ $XPNAM --delta="
 
 \cat < namprovi
 
-sed -e "s/_lbias_/.TRUE./" -e "s/_lincr_/.FALSE./" namprovi > namprovi_bias
-sed -e "s/_lbias_/.FALSE./" -e "s/_lincr_/.TRUE./" namprovi > namprovi_incr
+$XPNAM --delta="
+&NAMINI
+  LBIAS=.TRUE.,
+  LINCR=.FALSE.,
+/
+" namprovi_bias=namprovi
+
+$XPNAM --delta="
+&NAMINI
+  LBIAS=.FALSE.,
+  LINCR=.TRUE.,
+/
+" namprovi_incr=namprovi
 
 #      *****************************************************
 #      *  Get input files for bias.                        *
