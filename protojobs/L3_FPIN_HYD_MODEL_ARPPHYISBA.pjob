@@ -54,14 +54,26 @@ $XPNAM --delta="
 /
 " namprovi1=${CNMEXPL}.nam
 
-sed -e "s/NPOSTS(1)=-4/NPOSTS(1)=-3/" namprovi1 > namprovi_prov
+$XPNAM --delta="
+&NAMCT0
+  NPOSTS(1)=-3,
+/
+" namprovi_prov=namprovi1
+
 \mv namprovi_prov namprovi2
 
-sed \
-     -e "s/NPOSTS(1)=-4/NPOSTS(1)=-0/" \
-     -e "s/LEQLIMSAT=.TRUE./LEQLIMSAT=.FALSE./" \
-     -e "s/h3/t0/" \
-namprovi1 > namprovi_prov
+$XPNAM --delta="
+&NAMCT0
+  NPOSTS(1)=-0,
+/
+&NEMCT0
+  LEQLIMSAT=.FALSE.,
+/
+&NAMRIP
+  CSTOP='t0',
+/
+" namprovi_prov=namprovi1
+
 \mv namprovi_prov namprovi3
 
 #      *****************************************************
