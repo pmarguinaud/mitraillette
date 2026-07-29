@@ -117,22 +117,16 @@ $XPNAM --delta="
 /
 " namprovi_5=namprovi
 
-
 $XPNAM --delta="
 &NAMMCC
   N923=6,
 /
-" nam1=namprovi
-
-
-\cat << FIN > grid6
-   NDATX=360,
-   NDATY=180,
-   RSTR=0.,
-FIN
-
-sed "/&NAMCLI/r grid6" nam1 >nam1.tmp
-\mv nam1.tmp namprovi_6
+&NAMCLI
+  NDATX=360,
+  NDATY=180,
+  RSTR=0.,
+/
+" namprovi_6=namprovi
 
 $XPNAM --delta="
 &NAMMCC
