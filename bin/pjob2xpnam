@@ -1,0 +1,144 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Getopt::Long;
+use File::Basename;
+use File::Spec;
+
+# pjob2xpnam
+#   Replace the runtime 'sed' placeholder substitution of namelists in a
+#   protojob by an '$XPNAM --delta=...' call, and strip the corresponding
+#   __TOKEN__ lines from the namelist(s).
+#   (see protojobs/TODO-xpnam)
+#
+#   Originals are left untouched: writes <job>.pjob.new and
+#   <namelist>.nam.new .
+
+my $usage = join "\n", (
+  "pjob2xpnam [--namdir=dir] job.pjob",
+  "  --namdir : directory holding the namelists",
+  "             (default: <pjobdir>/../namelist/cy50t1)",
+  "  writes job.pjob.new and <namdir>/<namelist>.nam.new ;",
+  "  originals are left untouched",
+);
+
+my $namdir;
+GetOptions('namdir=s' => \$namdir) or die "$usage\n";
+
+my $pjob = shift @ARGV or die "$usage\n";
+-f $pjob or die "pjob2xpnam: cannot read $pjob\n";
+
+open PJ, "<$pjob" or die "pjob2xpnam: cannot open $pjob: $!\n";
+my $text = do { local $/; <PJ> };
+close PJ;
+
+my ($cnmexpl) = $text =~ /^CNMEXPL=(\w+)\s*$/m;
+unless ( defined $cnmexpl ) {
+  ( $cnmexpl = basename($pjob) ) =~ s/\.pjob$//;
+}
+$namdir ||= File::Spec->catdir( dirname($pjob), '..', 'namelist', 'cy50t1' );
+
+# A placeholder sed block looks like :
+#   sed \
+#    -e "s/__TOKEN__/$VAR/" \ [more -e ...]
+#    -e "s/__NTASK_IO__/$NPROC_IO/" -e "s/__NTASKS__/$NPROC/" \
+#   ${CNMEXPL}.nam > namprovi
+my $sed_block = qr{
+  ^[\t ]*sed[\t ]+\\[\t ]*\n
+  ((?:[\t ]*(?:-e[\t ]+"s/__[A-Z0-9_]+__/\$[A-Za-z_]\w*/"[\t ]*)+\\[\t ]*\n)+)
+  [\t ]*(\S+\.nam)[\t ]*>[\t ]*(\S+)[\t ]*$
+}mx;
+
+my @blocks;    # (start, end, {token => shellvar}, input, output)
+while ( $text =~ /$sed_block/g ) {
+  my ( $start, $end, $elines, $input, $output ) = ( $-[0], $+[0], $1, $2, $3 );
+  my %map;
+  $map{$1} = $2
+    while $elines =~ /s\/__([A-Z0-9_]+)__\/(\$[A-Za-z_]\w*)\//g;
+  push @blocks, [ $start, $end, \%map, $input, $output ];
+}
+
+unless ( @blocks ) {
+  print "pjob2xpnam: no placeholder sed block in $pjob, nothing to do\n";
+  exit 0;
+}
+
+my ( @repl, @warn );
+
+for my $b ( @blocks ) {
+  my ( $start, $end, $map, $input, $output ) = @$b;
+
+  # find the source namelist : the last '$CP ${NAM_PATH}/src local'
+  # before the block whose target is the sed input file
+  my $prefix = substr( $text, 0, $start );
+  my $src = $input;
+  while ( $prefix =~ /^\s*\$CP\s+\$\{NAM_PATH\}\/(\S+)\s+(\S+)\s*$/mg ) {
+    $src = $1 if ( $2 eq $input );
+  }
+  ( my $namfile = $src ) =~ s/\$\{CNMEXPL\}/$cnmexpl/g;
+  my $nampath = File::Spec->catfile( $namdir, $namfile );
+
+  unless ( -f $nampath ) {
+    push @warn,
+      "pjob2xpnam: WARNING: $pjob: namelist $namfile not found in $namdir,"
+      . " sed block kept as is ($input > $output)";
+    next;
+  }
+
+  # parse the namelist : collect the KEY=__TOKEN__ lines per block,
+  # and remove them
+  open NAM, "<$nampath" or die "pjob2xpnam: cannot open $nampath: $!\n";
+  my @namlines = <NAM>;
+  close NAM;
+
+  my ( $block, @order, %delta, @stripped );
+  for my $line ( @namlines ) {
+    $block = $1 if ( $line =~ /^\s*&(\w+)/ );
+    if ( $line =~ /^\s*(\w+)\s*=\s*__([A-Z0-9_]+)__\s*,?\s*$/ ) {
+      my ( $key, $tok ) = ( $1, $2 );
+      die sprintf
+        "pjob2xpnam: %s: placeholder __%s__ (%s::%s) has no sed substitution in %s\n",
+        $nampath, $tok, $block || '?', $key, $pjob
+        unless exists $map->{$tok};
+      push @order, $block unless exists $delta{$block};
+      push @{ $delta{$block} }, [ $key, $map->{$tok} ];
+      next;
+    }
+    undef $block if ( $line =~ m{^\s*/} );
+    push @stripped, $line;
+  }
+
+  my $namnew = "$nampath.new";
+  open NEW, ">$namnew" or die "pjob2xpnam: cannot create $namnew: $!\n";
+  print NEW @stripped;
+  close NEW;
+  print "pjob2xpnam: wrote $namnew\n";
+
+  # build the xpnam replacement command
+  my $delta = "\n";
+  for my $bl ( @order ) {
+    $delta .= "&$bl\n";
+    $delta .= "  $_->[0]=$_->[1],\n" for @{ $delta{$bl} };
+    $delta .= "/\n";
+  }
+  push @repl, [ $start, $end, "\$XPNAM --delta=\"$delta\" $output=$input" ];
+  print "pjob2xpnam: $pjob: converted sed block ($input > $output)\n";
+}
+
+# apply the replacements to the pjob text (from the end,
+# to keep the offsets valid)
+for my $r ( reverse @repl ) {
+  substr( $text, $r->[0], $r->[1] - $r->[0] ) = $r->[2];
+}
+
+if ( @repl ) {
+  my $pjnew = "$pjob.new";
+  open NEW, ">$pjnew" or die "pjob2xpnam: cannot create $pjnew: $!\n";
+  print NEW $text;
+  close NEW;
+  print "pjob2xpnam: wrote $pjnew\n";
+} else {
+  print "pjob2xpnam: $pjob: nothing converted, no .pjob.new written\n";
+}
+
+warn "$_\n" for @warn;
