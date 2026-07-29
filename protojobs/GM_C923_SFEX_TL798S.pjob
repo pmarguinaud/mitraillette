@@ -80,15 +80,50 @@ ${CNMEXPL}_quad.nam > namprovi_quad
 
 echo " Do namelists for each job "
 
-sed "s/ N923=0/ N923=1/" namprovi > namprovi_1_lin
-sed "s/ N923=0/ N923=1/" namprovi_quad > namprovi_1_quad
+$XPNAM --delta="
+&NAMMCC
+  N923=1,
+/
+" namprovi_1_lin=namprovi
 
-sed "s/ N923=0/ N923=2/" namprovi > namprovi_2
-sed "s/ N923=0/ N923=3/" namprovi > namprovi_3
-sed "s/ N923=0/ N923=4/" namprovi > namprovi_4
-sed "s/ N923=0/ N923=5/" namprovi > namprovi_5
+$XPNAM --delta="
+&NAMMCC
+  N923=1,
+/
+" namprovi_1_quad=namprovi_quad
 
-sed "s/ N923=0/ N923=6/" namprovi > nam1
+
+$XPNAM --delta="
+&NAMMCC
+  N923=2,
+/
+" namprovi_2=namprovi
+
+$XPNAM --delta="
+&NAMMCC
+  N923=3,
+/
+" namprovi_3=namprovi
+
+$XPNAM --delta="
+&NAMMCC
+  N923=4,
+/
+" namprovi_4=namprovi
+
+$XPNAM --delta="
+&NAMMCC
+  N923=5,
+/
+" namprovi_5=namprovi
+
+
+$XPNAM --delta="
+&NAMMCC
+  N923=6,
+/
+" nam1=namprovi
+
 
 \cat << FIN > grid6
    NDATX=360,
@@ -99,8 +134,18 @@ FIN
 sed "/&NAMCLI/r grid6" nam1 >nam1.tmp
 \mv nam1.tmp namprovi_6
 
-sed "s/ N923=0/ N923=8/" namprovi > namprovi_8
-sed "s/ N923=0/ N923=9/" namprovi > namprovi_9
+$XPNAM --delta="
+&NAMMCC
+  N923=8,
+/
+" namprovi_8=namprovi
+
+$XPNAM --delta="
+&NAMMCC
+  N923=9,
+/
+" namprovi_9=namprovi
+
 
 \rm namprovi
 
