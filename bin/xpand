@@ -1,0 +1,226 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Getopt::Long;
+use lib "$ENV{HOME}/perl5/lib/perl5/x86_64-linux-thread-multi";
+use XML::LibXML;
+use fxtran;
+
+# xpand
+#   Expand namelist array assignments into lists of scalars.
+#   (see namelist/cy50t1/TODO-expand)
+#
+#   Uses fxtran -namelist ; array syntax handled :
+#     VAR=v1,v2,...            -> VAR(1)=v1, VAR(2)=v2, ...
+#     VAR(i)=v1,v2,...         -> VAR(i)=v1, VAR(i+1)=v2, ...
+#     VAR(:)=v1,v2,...         -> VAR(1)=v1, ...
+#     VAR(i:j)=v1,v2,...       -> VAR(i)=v1, ..., VAR(j)=... (partial fill ok)
+#     VAR(i1:j1,i2:j2)=...     -> column-major order
+#     r*v                      -> r copies of v
+#   A ':' dimension whose extent would be needed (wrap) is fatal :
+#   the extent is unknowable from the namelist.
+#   Files containing double-underscore placeholders (__NTASKS__, ...)
+#   are not valid Fortran and are skipped.
+
+my $usage = join "\n", (
+  "xpand [-i|--inplace] [--var=NAME[,...]] [outfile=]namelist1 ...",
+  "  expand namelist array assignments into lists of scalars",
+  "  default output is <namelist>.new ; -i edits in place",
+);
+
+my ( $inplace, @vars, $help );
+GetOptions(
+  'inplace|i' => \$inplace,
+  'var=s@'    => \@vars,
+  'help'      => \$help,
+) or die "$usage\n";
+
+die "$usage\n" if ( $help or ! @ARGV );
+
+my %vars = map { uc($_) => 0 }
+  map { split /[;,\s]+/, $_ } @vars;
+
+sub lq {    # relative XPath with local-name() steps : lq('a/b') -> ./*[l-n()='a']/*[l-n()='b']
+  return '.' . join '', map { "/*[local-name()='$_']" } split /\//, $_[0];
+}
+
+sub item_spec {
+
+  # extract { name, block, dims => [...], values => [...] } from a
+  # namelist-item node ; dims are {t=>'scalar'|'range'|'colon'|'open',...}
+
+  my ($item) = @_;
+
+  my ($nam) = $item->findnodes( lq('E/named-E/N') )
+    or die "xpand: cannot find variable name in namelist-item\n";
+  my ($blk) = $item->findnodes(
+    "ancestor::*[local-name()='namelist-block']/*[local-name()='namelist-N']" );
+
+  my @dims;
+  my ($rlt) = $item->findnodes( lq('E/named-E/R-LT') );
+  if ($rlt) {
+    if ( $rlt->findnodes( lq('parens-R') )->size ) {
+      @dims = map { { t => 'scalar', v => 0 + $_->textContent } }
+        $rlt->findnodes( lq('parens-R/element-LT/element/literal-E/l') );
+    } else {
+      for my $ss ( $rlt->findnodes( lq('array-R/section-subscript-LT/section-subscript') ) ) {
+        my ($lb) = $ss->findnodes( lq('lower-bound/literal-E/l') );
+        my ($ub) = $ss->findnodes( lq('upper-bound/literal-E/l') );
+        if ( $lb && $ub ) {
+          push @dims, { t => 'range', lo => 0 + $lb->textContent, hi => 0 + $ub->textContent };
+        } elsif ($lb) {
+          if ( $ss->textContent =~ /:/ ) {
+            push @dims, { t => 'open', lo => 0 + $lb->textContent };
+          } else {
+            push @dims, { t => 'scalar', v => 0 + $lb->textContent };
+          }
+        } else {
+          push @dims, { t => 'colon' };
+        }
+      }
+    }
+  }
+
+  my @values;
+  for my $nv ( $item->findnodes( lq('namelist-value-LT/namelist-value') ) ) {
+    my ($rep) = $nv->findnodes( lq('repeat/literal-E/l') );
+    my ($expr) = grep { $_->localname ne 'repeat' }
+      grep { $_->nodeType == XML_ELEMENT_NODE } $nv->childNodes;
+    die "xpand: cannot find value in namelist-value\n" unless $expr;
+    ( my $v = $expr->textContent ) =~ s/^\s+|\s+$//g;
+    push @values, ($v) x ( $rep ? 0 + $rep->textContent : 1 );
+  }
+
+  return {
+    name   => $nam->textContent,
+    block  => $blk ? $blk->textContent : '?',
+    dims   => \@dims,
+    values => \@values,
+  };
+}
+
+sub expand {
+
+  # spec -> list of [varname, "i,j,...", value] to write, or undef
+  # when the item is to be left unchanged ; dies on unknowable extent
+
+  my ($s) = @_;
+  my ( $name, $dims, $values ) = @$s{ 'name', 'dims', 'values' };
+  my $n = scalar @$values;
+  my @dims = @$dims;
+
+  if ( ! @dims ) {
+    return undef if ( $n == 1 );          # plain scalar
+    @dims = ( { t => 'colon' } );         # whole array, 1-based
+  } elsif ( ! grep { $_->{t} ne 'scalar' } @dims ) {
+    return undef if ( $n == 1 );          # already a scalar element
+    # start at the given element : the leftmost index grows freely, in
+    # array element order (correct as long as no wrap occurs, exactly
+    # like a ':' dimension ; e.g. IL3DF(1,1)=1,2,3,...)
+    $dims[0] = { t => 'open', lo => $dims[0]{v} };
+  }
+
+  my @varies = grep { $dims[$_]{t} ne 'scalar' } 0 .. $#dims;
+
+  # a colon/open dimension may never wrap : nothing may vary to its right
+  for my $d (@varies) {
+    next if ( $dims[$d]{t} eq 'range' );
+    die sprintf
+      "xpand: %s::%s: unknowable extent of dimension %d, cannot expand\n",
+      $s->{block}, $name, $d + 1
+      if grep { $_ > $d } @varies;
+  }
+
+  # room available when all varying dims are bounded ranges
+  my $room;
+  if ( ! grep { $dims[$_]{t} ne 'range' } @varies ) {
+    $room = 1;
+    $room *= $dims[$_]{hi} - $dims[$_]{lo} + 1 for @varies;
+  }
+  warn sprintf
+    "xpand: WARNING: %s::%s: %d values for a subscript range of size %d\n",
+    $s->{block}, $name, $n, $room
+    if ( defined $room and $n > $room );
+
+  my @idx = map { $dims[$_]{t} eq 'scalar' ? $dims[$_]{v}
+              : $dims[$_]{t} eq 'colon'   ? 1
+              :                             $dims[$_]{lo} } 0 .. $#dims;
+
+  my @out;
+  for my $v (@$values) {
+    push @out, [ $name, join( ',', @idx ), $v ];
+    for my $vi ( 0 .. $#varies ) {        # increment, column-major
+      my $d = $varies[$vi];
+      $idx[$d]++;
+      last if ( $vi == $#varies );        # last varying dim never wraps
+      if ( $dims[$d]{t} eq 'range' and $idx[$d] > $dims[$d]{hi} ) {
+        $idx[$d] = $dims[$d]{lo};         # wrap, carry to the next dim
+      } else {
+        last;
+      }
+    }
+  }
+
+  return \@out;
+}
+
+for my $arg (@ARGV) {
+
+  my ( $namout, $namsrc ) = ( "", $arg );
+  ( $namout, $namsrc ) = split /=/, $namsrc if ( my $target = $namsrc =~ /=/ );
+  $namout = "$namsrc.new" if ( $namout eq "" );
+  $namout = $namsrc       if ( $inplace and ! $target );
+
+  open NAM, "<$namsrc" or die "xpand: unable to open file $namsrc\n";
+  my $src = do { local $/; <NAM> };
+  close NAM;
+
+  if ( $src !~ /&\w+/ ) {
+    warn "xpand: WARNING: $namsrc: no namelist block, copied unchanged\n";
+    open OUT, ">$namout" or die "xpand: unable to create file $namout\n";
+    print OUT $src;
+    close OUT;
+    next;
+  }
+
+  if ( $src =~ /__\w+__/ ) {
+    print "xpand: $namsrc: double-underscore placeholders (not valid Fortran), skipped\n";
+    next;
+  }
+
+  my $doc;
+  {
+    open my $olderr, ">&", \*STDERR or die "xpand: $!\n";
+    open STDERR, ">", "/dev/null" or die "xpand: $!\n";
+    $doc = eval { &parse( string => $src, fopts => ['-namelist'] ) };
+    open STDERR, ">&", $olderr or die "xpand: $!\n";
+  }
+  if ( ! $doc ) {
+    warn "xpand: WARNING: $namsrc: fxtran cannot parse it (not a valid Fortran namelist?), skipped\n";
+    next;
+  }
+
+  my @items = $doc->findnodes( "//*[local-name()='namelist-item']" );
+
+  my $nexp = 0;
+  for my $item (@items) {
+    my $spec = &item_spec($item);
+    next if ( keys %vars and ! exists $vars{ uc $spec->{name} } );
+    $vars{ uc $spec->{name} } = 1 if keys %vars;
+    my $lines = &expand($spec) or next;
+    my $text = join '', map { sprintf "%s(%s)=%s,\n   ", @$_ } @$lines;
+    $text =~ s/,\n   $/,/;    # no newline after the last scalar
+    $item->replaceNode( $doc->createTextNode($text) );
+    $nexp++;
+  }
+
+  open OUT, ">$namout" or die "xpand: unable to create file $namout\n";
+  print OUT $doc->textContent;
+  close OUT;
+
+  printf "xpand: %s: expanded %d item(s) -> %s\n", $namsrc, $nexp, $namout;
+}
+
+for my $v ( grep { ! $vars{$_} } keys %vars ) {
+  warn "xpand: WARNING: variable $v not found\n";
+}
