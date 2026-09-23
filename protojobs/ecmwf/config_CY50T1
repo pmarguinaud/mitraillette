@@ -164,7 +164,6 @@ export DR_HOOK_SILENT=1
 export DR_HOOK_OPT=prof
 export MPL_MBX_SIZE=2048000000
 export LFITOOLS=$EXEC_IFSAUX_LFITOOLS
-export KMP_AFFINITY="compact,granularity=fine"
 export KMP_BLOCKTIME=12
 export OMP_WAIT_POLICY=ACTIVE
 

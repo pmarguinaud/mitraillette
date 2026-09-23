@@ -66,7 +66,7 @@ echo " Get input files "
 
 # Initial conditions + clims:
 $ECP ${FILE_PATH}/F11982016060412L.C022.L105AB.operprod ICMSH${CNMEXPS}INIT
-$ECP ${FILE_PATH}/PGDFILE_lalon_ALP1300.fa const.clim.sfx.FRANGP
+$ECP ${FILE_PATH}/PGDFILE_ALP1300.fa const.clim.sfx.FRANGP
 $ECP ${FILE_PATH}/clim_arpege.tl1198.01.m06 Const.Clim
 $ECP ${FILE_PATH}/clim_arome_ALP1300.m06 const.clim.FRANGP
 $ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapI_covers_param.bin ecoclimapI_covers_param.bin

@@ -692,9 +692,6 @@
  &NAMRCOEF
  /
  &NAMRES
-   NFRRES=1,
-   NRESTS(1)=-1,
-   NRESTS(2)=-32767,
  /
  &NAMRGRI
  /

@@ -108,7 +108,7 @@ $ECP ${FILE_PATH}/clim_dap.franxl0013.m06 const.clim.FRANXL0013
 
 # Files for SURFEX:
 $ECP ${FILE_PATH}/AROMALP1300_20160604r12_SURF ICMSH${CNMEXPS}INIT.sfx
-$ECP ${FILE_PATH}/PGDFILE_lalon_ALP1300.fa Const.Clim.sfx
+$ECP ${FILE_PATH}/PGDFILE_ALP1300.fa Const.Clim.sfx
 $ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapI_covers_param.bin ecoclimapI_covers_param.bin
 $ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_af_covers_param.bin ecoclimapII_af_covers_param.bin
 $ECP ${FILE_PATH_ECOCLIMAP}/ecoclimapII_eu_covers_param.bin ecoclimapII_eu_covers_param.bin
