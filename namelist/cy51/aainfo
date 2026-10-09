@@ -1,0 +1,99 @@
+ Version MITRAILLETTE: October 2025 (v102025)
+ Namelists valid for CY50T1
+
+ ======================================================================================
+
+ L1_.. : LAM 1D model
+ L2_.. : LAM 2D model
+ L3_.. : LAM 3D model
+ GM_.. : Global model, LECMWF=F
+ GE_.. : Global model, LECMWF=T
+
+ ======================================================================================
+
+ Namelists must be compliant with some norms described in documentation.
+
+ All namelists ending by .nam have the same elements as "vide"
+
+ In namelist naming there is a group of characters for type of physics:
+  for example ARPPHYISBA means upper air physics=ARPEGE one, surface scheme is ISBA.
+
+ ======================================================================================
+
+ Transform diabatic namelists into adiabatic ones:
+ * For namelist elements which are present in "vv_adiab_physics":
+   fill them according to the content of vv_adiab_physics.
+ * Additionally:
+   - LAROME=F
+   - No CFU
+   - No XFU
+   - No ISP
+   - No diabatic DDH
+   - No PHYSOL, CFU, XFU FULLPOS diagnostics.
+   - No reference to NSFXHISTS, N1SFXHIS.
+   - Adapt the list of GFL (generally, only Q is kept), adapt NAMGFL.
+     Check attributes LGP, LSP, LGPINGP, LCDERS, LQM, NREQIN, LSLHD, NCOUPLING.
+     Ex for adiabatic AROME:
+      &NAMGFL
+        YQ_NL%LGP=.TRUE.,
+        YQ_NL%LSP=.FALSE.,
+        YQ_NL%LGPINGP=.TRUE.,
+        YQ_NL%LCDERS=.FALSE.,
+        YQ_NL%LQM=.TRUE.,
+        YQ_NL%NREQIN=1,
+        YQ_NL%LSLHD=.FALSE.,
+        YQ_NL%NCOUPLING=1,
+      /
+   - Value of LSLHD_GFL must be checked (must be consistent with NAMGFL).
+     Ex for adiabatic AROME: LSLHD_GFL=.FALSE.
+
+ ======================================================================================
+
+ For increased output level: change NPRINTLEV=0 into NPRINTLEV=1
+ For bound checking and debug mode: change NUNDEFLD=-99999999 into NUNDEFLD=1
+ For testing with a very small timestep: no DFI
+  - change LDFI=.TRUE. into LDFI=.FALSE.
+  - change LXXGST=.TRUE. into LXXGST=.FALSE.
+  - change LXMWINDCLS=.TRUE. into LXMWINDCLS=.FALSE.
+
+ ======================================================================================
+
+ To use "alignnamelist":
+
+ j=" (all these namelists) "
+ for i in $j
+ do
+   clear
+   echo " traitement de la namelist $i "
+   cp $i old_$i
+   alignnamelist vide $i
+   \mv ${i}.new $i
+ done
+
+ Check by vimdiff that namelists are correctly updated
+ for i in $j
+ do
+   vimdiff $i old_$i
+ done
+
+ Check by diff that namelists are correctly updated
+ for i in $j
+ do
+   clear
+   echo $i
+   diff $i old_$i
+   sleep 1
+ done
+
+ ======================================================================================
+
+ Modifications since last release:
+ - Add new gabarits: PEARP, ECPHY, SLXYZ
+ - Add gabarits for IFS physics (gabarits with ECPHY)
+ - Add gabarits for some IFS forecast (gabarits with SLXYZ)
+ - Add IFS forecasts
+ - Add some VFE jobs with LCOMPATIBLE=.TRUE. (same as LVFE_COMPATIBLE=.TRUE. before cy50T1)
+ - Add Arpege forecasts with WENO and "WENO+CONS"
+ - Add Arpege forecast GM_FCST_HYD_SL2_VFE_PEARP_PHYSFEX_SLT_TL798S with PEARP options : ecrad, CAPE, Tiedke 
+
+ ======================================================================================
