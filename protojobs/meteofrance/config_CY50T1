@@ -138,8 +138,10 @@ sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,Exi
 fi
 }
 
+export PATH=__mit_install_dir__/bin:$PATH
+
 # xpnam
-XPNAM=__mit_install_dir__/bin/xpnam
+XPNAM=xpnam
 
 # Machine-depending namelist variables
 LOPT_SCALAR=.TRUE.

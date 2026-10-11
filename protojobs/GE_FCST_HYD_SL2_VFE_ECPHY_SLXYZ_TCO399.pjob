@@ -84,6 +84,53 @@ grib_api_prefix=$(ldd $MYOWNBIN  | perl -ne '
  print &dirname (&dirname ($path)), "\n" ')
 
 export ECCODES_SAMPLES_PATH=$grib_api_prefix/share/eccodes/ifs_samples/grib1_mlgrib2:/MEMFS/ifs_samples/grib1_mlgrib2
+export ECCODES_DEFINITION_PATH=$PWD/extra_grib_defs:$grib_api_prefix/share/definitions:$grib_api_prefix/share/eccodes/definitions:/MEMFS/share/definitions:/MEMFS/share/eccodes/definitions
+
+cat << EOF | update_paramId.pl \
+  $grib_api_prefix/share/eccodes/definitions/grib2/localConcepts/ecmf/paramId.def \
+  - extra_grib_defs/grib2/localConcepts/ecmf/paramId.def
+#Time-integrated total column vertically-integrated eastward ozone flux
+'233032' = {
+         discipline = 0 ; 
+         parameterCategory = 20 ;
+         parameterNumber = 78 ;
+         typeOfFirstFixedSurface = 1 ;
+         typeOfSecondFixedSurface = 8 ;
+         constituentType = 0 ;
+         typeOfStatisticalProcessing = 1 ;
+}
+#Time-integrated total column vertically-integrated northward ozone flux
+'233033' = {
+         discipline = 0 ;
+         parameterCategory = 20 ;
+         parameterNumber = 79 ;
+         typeOfFirstFixedSurface = 1 ;
+         typeOfSecondFixedSurface = 8 ;
+         constituentType = 0 ;
+         typeOfStatisticalProcessing = 1 ;
+}
+#Time-integrated total column vertically-integrated divergence of ozone flux
+'233034' = {
+         discipline = 0 ;
+         parameterCategory = 20 ;
+         parameterNumber = 80 ;
+         typeOfFirstFixedSurface = 1 ;
+         typeOfSecondFixedSurface = 8 ;
+         constituentType = 0 ;
+         typeOfStatisticalProcessing = 1 ;
+}
+#Time-integrated total column vertically-integrated net source of ozone
+'233035' = {
+         discipline = 0 ;
+         parameterCategory = 20 ;
+         parameterNumber = 81 ;
+         typeOfFirstFixedSurface = 1 ;
+         typeOfSecondFixedSurface = 8 ;
+         constituentType = 0 ;
+         typeOfStatisticalProcessing = 1 ;
+}
+EOF
+
 
 echo " Copy namelist on fort.4 "
 $CP namprovi fort.4
