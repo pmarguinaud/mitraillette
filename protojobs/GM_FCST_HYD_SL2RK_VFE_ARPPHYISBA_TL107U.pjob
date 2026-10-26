@@ -17,7 +17,7 @@
 #------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: Conf 001HYD sl2tl diab TL107L70c1; no DFI; VFE; no SLHD; RK4                                            
+# MITRAILLE COMMENT: Conf 001HYD sl2tl diab TL107L70c1; no DFI; VFE; no SLHD; RK4; ecrad                                     
 
 CNMEXPL=GM_FCST_HYD_SL2RK_VFE_ARPPHYISBA_TL107U
 
