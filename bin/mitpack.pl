@@ -16,6 +16,7 @@ mitpack
   $ mitpack --status --reference /path/to/ref  #  Show a small report on all tasks, compare with a reference
   $ mitpack --cancel                           #  Cancel already submitted tasks
   $ mitpack --maxtime                          #  Submit jobs per groups of jobs, maxtime is the maximumu time of the group of jobs.
+  $ mitpack --save                             #  Save files created or modified by the tasks
 
 =head1 DESCRIPTION
 
@@ -65,6 +66,13 @@ Show the status for last test case.
 
 Cancel tasks (with scancel) for last test case.
 
+=item --save
+
+Create a test case whose tasks save the files created or modified by each mpilaunch in
+$SAVE_DIR/$CNMEXPL.N, N being the rank of this mpilaunch in the task, starting from 1 (SAVE_DIR
+is set in the config_* files); this directory is removed first if it already exists. This
+option cannot be used with --reuse.
+
 =item --reference
 
 Provide a reference for comparison; this may be the path of a MITRAILLETTE test case
@@ -109,7 +117,7 @@ my $build = 'mitraille::build'->new ();
 $build or die ("mitpack should be called either from a pack or from a cmake build");
 
 my %opts = (version => $build->getVersion (), filter => '', maxtime => 0, maxjob => 0, fields => '');
-my @opts_f = qw (verbose help reuse dryrun status cancel list);
+my @opts_f = qw (verbose help reuse dryrun status cancel list save);
 my @opts_s = qw (version filter maxtime maxjob fields);
 my @opts_l = qw (reference);
 
@@ -141,6 +149,10 @@ if ($opts{help})
 $opts{reuse} ||= $opts{status};
 $opts{reuse} ||= $opts{cancel};
 $opts{reuse} ||= $opts{list};
+
+die ("--save applies to a new test case, it cannot be used with --reuse\n")
+  if ($opts{save} && $opts{reuse});
+
 $opts{fields} = [split (m/,/o, $opts{fields})];
 
 if ($opts{reference})

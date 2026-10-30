@@ -17,6 +17,9 @@ IO_SERV_TOOLS_DIR=__mit_install_dir__/io_serv_tools
 # Where to store the output files
 WORKDIR=/scratch/work/${USER}
 
+# Where to save the files created or modified by the jobs (mitpack --save)
+SAVE_DIR=${WORKDIR}/mitsave
+
 if [ "x$STARTTIME" != "x" ]
 then
 TMP_LOC=$TMPDIR/tmp/mitraille.${SLURM_JOBID}.${STARTTIME}
