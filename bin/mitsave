@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# Save the files created or modified by a mitraillette job
+#
+#   mitsave start DIR : remove DIR if present, record in it the files of the current
+#                       directory, with their time stamps, and replace hard links left
+#                       by a previous "mitsave end" with copies, so that saved files
+#                       are not modified
+#   mitsave end DIR   : list in DIR/mitsave.list the files created or modified since
+#                       "mitsave start", and copy them to DIR (hard links if possible)
+#
+
+set -e
+
+action=$1
+dir=$2
+
+export LC_ALL=C
+
+function listfiles
+{
+  find . \( -type f -o -type l \) -printf '%T@ %p\n' | sort
+}
+
+case "$action:$dir" in
+  start:?*)
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    find . -type f -links +1 | while read -r file
+    do
+      cp -a "$file" "$file.mitsave"
+      mv -f "$file.mitsave" "$file"
+    done
+    listfiles > "$dir/mitsave.start"
+    sleep 2 # Time stamps have a resolution of one second: make sure later changes are detected
+    ;;
+  end:?*)
+    listfiles | comm -13 "$dir/mitsave.start" - | cut -d' ' -f2- > "$dir/mitsave.list"
+    while read -r file
+    do
+      cp -alf --parents "$file" "$dir" 2> /dev/null || cp -af --parents "$file" "$dir"
+    done < "$dir/mitsave.list"
+    ;;
+  *)
+    echo "Usage: $(basename $0) start|end DIR" 1>&2
+    exit 1
+    ;;
+esac

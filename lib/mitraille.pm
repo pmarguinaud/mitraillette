@@ -102,6 +102,7 @@ sub createMitrailletteTestCase
     build           => $build->getInstallPath (),
     cycle           => $args{version},
     pro_file        => $pro_file,
+    save            => $args{save},
   );
   
   my @test1 = map { &basename ($_) } <$dir/*>;

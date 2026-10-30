@@ -124,6 +124,11 @@ sub set_job
       s/__nam_path__/${nam_path_plain}/go;
       s/__mitra_pid__/$args{mitra_pid}/go;
       s/__mit_install_dir__/${mit_install_dir}/go;
+      if ($args{save})
+        {
+          s{^([ \t]*)(mpilaunch\b.*)$}
+           {$1impilaunch=\$((impilaunch+1))\n$1mitsave start \$SAVE_DIR/\$CNMEXPL.\$impilaunch\n$1$2\n$1mitsave end \$SAVE_DIR/\$CNMEXPL.\$impilaunch}gmo;
+        }
     }
 
   (my $cj = 'FileHandle'->new (">$cjob_file"))
