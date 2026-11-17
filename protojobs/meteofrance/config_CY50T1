@@ -125,7 +125,7 @@ function mpilaunch
   ls -d ./* > dirlst
 
   time \
-    /home/mf/dp/marp/verolive/public/mpi-tools/mpiauto/mpiauto \
+    /home/gmap/mrpm/marguina/SAVE/mpiauto/mpiauto \
     --verbose --wrap --wrap-stdeo \
         -nn $NNODE_FC -nnp $NTASK_FC -openmp $NOPMP_FC -- $* \
     --  -nn $NNODE_IO -nnp $NTASK_IO -openmp $NOPMP_IO -- $* 
