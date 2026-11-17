@@ -2,26 +2,9 @@ package mitraille::generate;
 
 use strict;
 
-use Cwd qw (cwd);
-use File::Basename;
-use File::Spec;
 use FileHandle;
-use Data::Dumper;
 
-use base qw (Exporter);
-
-our @EXPORT_OK = qw (run);
-
-sub read_file
-{
-  my ($file) = @_;
-  (my $fh = 'FileHandle'->new ("<$file"))
-    or die ("Cannot open `$file'");
-  local $/ = undef;
-  my $content = <$fh>;
-  $fh->close ();
-  return $content;
-}
+use mitraille::util qw (slurp spew);
 
 sub getjob
 {
@@ -40,28 +23,13 @@ sub getjob
 sub getprofil
 {
   my %args = @_;
-  my $job_name = $args{job_name};
-  $job_name =~ s/\.pjob$//o;
-  my $profil_table = $args{profil_table};
+  my ($profile, $profil_table) = @args{qw (profile profil_table)};
+
+  die ("$args{job_name}: unknown profile `$profile' (see $args{profil_file})\n")
+    unless (exists ($profil_table->{$profile}));
 
   my @h = @{ $profil_table->{header} };
-
-  my @c;
-
-  if (exists ($profil_table->{$job_name}))
-    {
-      @c = @{ $profil_table->{$job_name} };
-    }
-  # Fallback: use endjob profile or defaults
-  elsif (exists ($profil_table->{"endjob"}))
-    {
-      @c = @{ $profil_table->{"endjob"} };
-    }
-  else
-    {
-die;
-      @c = (10, 0, 1, 1, 128);
-    }
+  my @c = @{ $profil_table->{$profile} };
 
   my %p = map { ($h[$_], $c[$_]) } (0 .. $#h);
 
@@ -116,7 +84,7 @@ sub sbatch_header
 
   my $partial = "$args{ref_jobsdir}/$args{station}/sbatch.partial";
 
-  return (&read_file ("$args{ref_jobsdir}/$args{station}/sbatch.full"), $prof->{nopmp_fc})
+  return (&slurp ("$args{ref_jobsdir}/$args{station}/sbatch.full"), $prof->{nopmp_fc})
     unless ($prof->{partial} && (-f $partial));
 
   die ("$job_name: a partial node profile must use a single node, without IO server\n")
@@ -124,7 +92,7 @@ sub sbatch_header
   die ("$job_name: a partial node profile must use at most $machine->{cores_per_node} cores\n")
     if ($machine->{cores_per_node} && ($prof->{ntask_fc} * $prof->{nopmp_fc} > $machine->{cores_per_node}));
 
-  return (&read_file ($partial), $prof->{nopmp_fc} * ($machine->{cpus_per_core} || 1));
+  return (&slurp ($partial), $prof->{nopmp_fc} * ($machine->{cpus_per_core} || 1));
 }
 
 sub set_job
@@ -133,60 +101,52 @@ sub set_job
 
   my $job_name = $args{job_name};
   my $code_name = $args{code_name};
-  my $build = $args{build} // '';
 
   my $JOB = &getjob (%args);
 
-  my $content = &read_file ($JOB);
+  my $content = &slurp ($JOB);
 
-  my ($prof, $time) = ($content =~ m/PROFILE\s*=\s*(\S+)\s*,\s*TIME\s*=\s*(\d+)m?/goms);
+  my ($profile, $time) = ($content =~ m/PROFILE\s*=\s*(\S+)\s*,\s*TIME\s*=\s*(\d+)m?/oms);
 
-  if ($prof && $time)
-    {
-      $prof = &getprofil (%args, job_name => $prof);
-      $prof->{walltime} = $time;
-    }
-  else
-    {
-      die $job_name;
-    }
+  die ("$JOB: no `# MITRAILLE PROFILE = <profile>, TIME = <minutes>' line\n")
+    unless ($profile && $time);
 
-  my $NBNODES = $prof->{nnode_fc} + $prof->{nnode_io};
+  my $prof = &getprofil (%args, profile => $profile);
 
   my ($sbatch, $cpus_per_task) = &sbatch_header (%args, prof => $prof);
 
-  my $cjob_file = "$args{job_dir}/${code_name}.cjob";
   $content = $sbatch
            . $JOBHEADER
            . "export STATION=$args{station}\n"
-           . &read_file ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
+           . &slurp ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
            . $content
            . $JOBTRAILER;
 
-  my $nam_path_plain = "$args{ref_namdir}/$args{cycle_lc}";
-  my $mit_install_dir = $args{mit_install_dir} // '';
+# Values of the __placeholders__; upper case ones (eg __NTASKS__) belong to
+# namelist templates and are replaced by the jobs themselves
+
+  my %subst =
+  (
+    jobname          => "O${code_name}",
+    nb_nodes         => $prof->{nnode_fc} + $prof->{nnode_io},
+    (map { ($_, $prof->{$_}) } qw (nnode_fc ntask_fc nopmp_fc nnode_io ntask_io nopmp_io)),
+    cpus_per_task    => $cpus_per_task,
+    job_walltime     => $time,
+    v_cycle          => $args{cycle},
+    my_own_pack      => $args{build} // '',
+    nam_path         => "$args{ref_namdir}/$args{cycle_lc}",
+    mitra_pid        => $args{mitra_pid},
+    mit_install_dir  => $args{mit_install_dir} // '',
+  );
 
   for ($content)
     {
-      s/__jobname__/O${code_name}/go;
+      s{__([a-z][a-z0-9_]*)__}
+       {
+         exists ($subst{$1}) or die ("$JOB: unknown placeholder `__$1__'\n");
+         $subst{$1}
+       }geo;
 
-      s/__nb_nodes__/${NBNODES}/go;
-
-      s/__nnode_fc__/$prof->{nnode_fc}/go;
-      s/__ntask_fc__/$prof->{ntask_fc}/go;
-      s/__nopmp_fc__/$prof->{nopmp_fc}/go;
-      s/__cpus_per_task__/${cpus_per_task}/go;
-
-      s/__nnode_io__/$prof->{nnode_io}/go;
-      s/__ntask_io__/$prof->{ntask_io}/go;
-      s/__nopmp_io__/$prof->{nopmp_io}/go;
-
-      s/__job_walltime__/$prof->{walltime}/go;
-      s/__v_cycle__/$args{cycle}/go;
-      s/__my_own_pack__/${build}/go;
-      s/__nam_path__/${nam_path_plain}/go;
-      s/__mitra_pid__/$args{mitra_pid}/go;
-      s/__mit_install_dir__/${mit_install_dir}/go;
       if ($args{save})
         {
           s{^([ \t]*)(mpilaunch\b.*)$}
@@ -194,10 +154,7 @@ sub set_job
         }
     }
 
-  (my $cj = 'FileHandle'->new (">$cjob_file"))
-    or die ("Cannot write `$cjob_file'");
-  $cj->print ($content);
-  $cj->close ();
+  &spew ("$args{job_dir}/${code_name}.cjob", $content);
 }
 
 #---------------------------------------------------------------------------------------------------------
@@ -337,6 +294,7 @@ BASTA
   $pf->close ();
 
   $args{profil_table} = \%PROFIL_TABLE;
+  $args{profil_file} = $profil_file;
 
   #---------------------------------------------------------------------------------------------------------
   # 3b. Read machine description (compute nodes), if any

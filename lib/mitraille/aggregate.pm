@@ -6,16 +6,10 @@ use Storable;
 
 use strict;
 
+use mitraille::util qw (slurpl);
+
 use mitraille::aggregate::maxtime;
 use mitraille::aggregate::maxjob;
-
-sub slurpl
-{
-  my $f = shift;
-  my @x = do { my $fh = 'FileHandle'->new ("<$f"); <$fh> };
-  chomp for (@x);
-  return @x;
-}
 
 sub header
 {

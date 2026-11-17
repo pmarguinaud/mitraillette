@@ -1,0 +1,109 @@
+#!/bin/bash
+#
+# Check that the generation of jobs is unchanged: generate all jobs of all
+# stations and versions, with the code and protojobs of a git revision (default
+# HEAD) and with those of the working tree, and compare the results.
+#
+# Usage: tests/check-generate [--keep] [--diff-opts "OPTS"] [REVISION]
+#
+#   --keep        keep the generated jobs (directory printed at the end)
+#   --diff-opts   options passed to diff (e.g. "-B" to ignore blank lines)
+#
+
+set -e
+
+keep=0
+diffopts=""
+
+while [ $# -gt 0 ]
+do
+  case "$1" in
+    --keep)      keep=1 ;;
+    --diff-opts) diffopts="$2"; shift ;;
+    -*)          echo "Unknown option $1" >&2; exit 2 ;;
+    *)           break ;;
+  esac
+  shift
+done
+
+rev=${1-HEAD}
+
+top=$(cd $(dirname $0)/.. && pwd)
+tmp=$(mktemp -d ${TMPDIR:-/tmp}/check-generate.XXXXXX)
+
+# Copy of the generation inputs: either from a git revision, or from the working tree
+
+function tree
+{
+  dir=$1
+  mkdir -p $dir
+  if [ "x$2" = "x" ]
+  then
+    (cd $top && tar cf - lib protojobs PRO_FILE.*) | (cd $dir && tar xf -)
+  else
+    (cd $top && git archive $2 lib protojobs $(git ls-tree --name-only $2 | grep '^PRO_FILE\.')) | (cd $dir && tar xf -)
+  fi
+}
+
+# Generate the jobs of all stations and versions in tree $1; results in $1.out
+
+function generate
+{
+  dir=$1
+  for config in $dir/protojobs/*/config_*
+  do
+    station=$(basename $(dirname $config))
+    version=${config##*/config_}
+    [ -f "$dir/PRO_FILE.$version" ] || continue
+    [ "$station" = "meteofrance" ] && continue  # Same files as belenos & taranis
+    out=$dir.out/$station/$version
+    mkdir -p $out $tmp/home
+    echo "MITRA_PID=1" > $tmp/home/.mitrc
+    rm -rf $dir/$(echo $version | tr A-Z a-z)
+    HOME=$tmp/home MIT_INSTALL_DIR=$dir STATION=$station \
+    perl -I$dir/lib -Mmitraille::generate -e '
+      &mitraille::generate::run (build => "/path/to/pack", cycle => $ARGV[0], pro_file => $ARGV[1]);
+    ' $version $dir/PRO_FILE.$version
+    for cjob in $dir/$(echo $version | tr A-Z a-z)/mitraille_*/*.cjob
+    do
+      sed -e "s,$dir,@MIT_INSTALL_DIR@,g" $cjob > $out/$(basename $cjob)
+    done
+  done
+}
+
+tree $tmp/ref $rev
+tree $tmp/new
+
+generate $tmp/ref
+generate $tmp/new
+
+status=0
+
+for out in $tmp/ref.out/*/*
+do
+  rel=${out#$tmp/ref.out/}
+  n=$(ls $out | wc -l)
+  if (cd $tmp && diff -r $diffopts ref.out/$rel new.out/$rel) > $tmp/diff.txt
+  then
+    echo "$rel: $n jobs, identical"
+  else
+    echo "$rel: $n jobs, DIFFERENT ($(grep -c '^diff\|^Only' $tmp/diff.txt) files)"
+    head -40 $tmp/diff.txt
+    status=1
+  fi
+done
+
+for out in $tmp/new.out/*/*
+do
+  rel=${out#$tmp/new.out/}
+  [ -d $tmp/ref.out/$rel ] || { echo "$rel: only in the working tree"; status=1; }
+done
+
+if [ $keep -eq 1 ]
+then
+  echo "Generated jobs: $tmp/ref.out (revision $rev), $tmp/new.out (working tree)"
+else
+  rm -rf $tmp
+fi
+
+exit $status

@@ -15,18 +15,7 @@ use mitraille::build;
 use mitraille::node;
 use mitraille::printer::terminal;
 use mitraille::generate;
-
-sub center
-{
-  my ($s, $n) = @_; 
-  my $i = 0;
-  while (length ($s) < $n) 
-    {   
-      $s = $i % 2 ? " $s" : "$s ";
-      $i++;
-    }   
-  return $s; 
-}
+use mitraille::util qw (slurp);
 
 sub runCommand
 {
@@ -110,37 +99,9 @@ sub createMitrailletteTestCase
   
   $mitraillette = "$ENV{MIT_INSTALL_DIR}/$dir/$mitraillette";
   
-  my @cjob = sort <$mitraillette/*.cjob>;
-
-  for my $cjob (@cjob)
-    {
-      &patchCJob (cjob => $cjob, build => $build);
-    }
-
   'FileHandle'->new (">$mitraillette/VERSION")->print ("$args{version}\n");
 
   return $mitraillette;
-}
-
-sub patchCJob
-{
-  my %args = @_;
-
-  my ($build, $cjob) = @args{qw (build cjob)};
-  
-  my $install = $build->getInstallPath ();
-
-  my @text = do { my $fh = 'FileHandle'->new ("<$cjob"); <$fh> };
-
-  for (@text)
-    {
-     if (/test\.x\d+/o)
-       {
-         $_ = "\n";
-       }
-    }
-
-  'FileHandle'->new (">$cjob")->print (join ('', @text));
 }
 
 sub submitJob
@@ -155,15 +116,6 @@ sub submitJob
   my ($id) = ($out =~ m/Submitted batch job (\d+)/o);
   'FileHandle'->new (">$job.id")->print ("$id\n");
   return $id;
-}
-
-sub slurp
-{
-  my $f = shift;
-  (my $fh = 'FileHandle'->new ("<$f")) or die ("Cannot open `$f'");
-  local $/ =  undef; 
-  my $text = <$fh>;
-  return $text;
 }
 
 sub cancelJob
@@ -239,20 +191,6 @@ sub jobInfo
 
   my $text = &slurp ($o);
 
-  my $ABORTED = << 'EOF';
-
-#########################################
-#        BULL - METEO-FRANCE            #
-#        Job Accounting                 #
-#########################################
-EOF
-
-  if (substr ($text, 0, length ($ABORTED)) eq $ABORTED)
-    {
-      unlink ($o);
-      return;
-    }
-
   my ($CNMEXPL) = ($text =~ m/CNMEXPL=(\w+)/goms);
   $CNMEXPL or return {status => 'UNKNOWN', CNMEXPL => '?'};
 
@@ -316,25 +254,6 @@ sub getColorStatus
   );
 
   return $color{$status};
-}
-
-sub colorStatus
-{
-  my $text = shift;
-  &colorMessage (&getColorStatus ($text), $text);
-}
-
-sub colorMessage
-{
-  my ($color, $text) = @_;
-  if ((-t STDOUT) && $color)
-    {
-      return &colored ([$color], $text);
-    }
-  else
-    {
-      return $text;
-    }
 }
 
 sub listTestCases
@@ -584,12 +503,6 @@ sub showStatus
 
     }
 
-}
-
-sub statusEquiv
-{
-  my ($status1, $status2) = @_;
-  return (($status1 eq 'COMPLETED') == ($status2 eq 'COMPLETED')) || ($status1 eq 'UNKNOWN') || ($status2 eq 'UNKNOWN');
 }
 
 sub getLastMitraillette
