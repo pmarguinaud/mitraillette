@@ -147,6 +147,10 @@ sub submitJob
 {
   my %args = @_;
   my $job = $args{job};
+# When submitting from within a Slurm job, sbatch would pass the CPU mask of
+# this job to the new job; srun then fails in jobs using part of a node
+  local %ENV = %ENV;
+  delete @ENV{grep { m/^SLURM_CPU_BIND/o } keys (%ENV)};
   my $out = &runCommand (%args, stdout => 1, command => ['sbatch', $job]);
   my ($id) = ($out =~ m/Submitted batch job (\d+)/o);
   'FileHandle'->new (">$job.id")->print ("$id\n");

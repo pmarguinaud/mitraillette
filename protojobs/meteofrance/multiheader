@@ -1,9 +1,7 @@
 #!/bin/bash
-#SBATCH -p normal256
+__sbatch_resources__
 #SBATCH -J __jobname__
-#SBATCH --nodes=__nb_nodes__
 #SBATCH --time "__job_walltime__"
-#SBATCH --exclusiv
 #SBATCH -o __jobname__.o%j
 
 NNODE_FC=__nnode_fc__

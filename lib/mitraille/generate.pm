@@ -68,6 +68,41 @@ die;
   return \%p;
 }
 
+# Slurm resources of a job, from the profile and from the machine description
+# (machine.conf); profiles with the partial flag use part of a single node,
+# that is ntask_fc x nopmp_fc cores, in the partial partition
+
+sub sbatch_resources
+{
+  my ($prof, $machine, $job_name) = @_;
+
+  my $nnode = $prof->{nnode_fc} + $prof->{nnode_io};
+
+  my @r;
+
+  if ($prof->{partial} && $machine && $machine->{partial})
+    {
+      die ("$job_name: a partial node profile must use a single node, without IO server\n")
+        unless (($nnode == 1) && ($prof->{nnode_io} == 0));
+      die ("$job_name: a partial node profile must use at most $machine->{cores_per_node} cores\n")
+        if ($prof->{ntask_fc} * $prof->{nopmp_fc} > $machine->{cores_per_node});
+
+      my $partial = $machine->{partial};
+      push @r, "-p $partial->{partition}", "--nodes=1",
+               "--ntasks=$prof->{ntask_fc}", "--cpus-per-task=$prof->{nopmp_fc}";
+      push @r, "--mem-per-cpu=$partial->{mem_per_cpu}" if ($partial->{mem_per_cpu});
+    }
+  else
+    {
+      my $full = $machine ? $machine->{full} : {exclusive => 1};
+      push @r, "-p $full->{partition}" if ($full->{partition});
+      push @r, "--nodes=$nnode";
+      push @r, "--exclusive" if ($full->{exclusive});
+    }
+
+  return join ("\n", map { "#SBATCH $_" } @r);
+}
+
 sub set_job
 {
   my %args = @_;
@@ -106,6 +141,8 @@ sub set_job
 
   for ($content)
     {
+      s/__sbatch_resources__/&sbatch_resources ($prof, $args{machine}, $job_name)/geo;
+
       s/__jobname__/O${code_name}/go;
 
       s/__nb_nodes__/${NBNODES}/go;
@@ -274,6 +311,17 @@ BASTA
   $pf->close ();
 
   $args{profil_table} = \%PROFIL_TABLE;
+
+  #---------------------------------------------------------------------------------------------------------
+  # 3b. Read machine description (nodes & partitions), if any
+  #---------------------------------------------------------------------------------------------------------
+
+  my $machine_file = "$args{ref_jobsdir}/$args{station}/machine.conf";
+  if (-f $machine_file)
+    {
+      $args{machine} = do ($machine_file)
+        or die ("Cannot read `$machine_file': " . ($@ || $!) . "\n");
+    }
 
   #---------------------------------------------------------------------------------------------------------
   # 4. Initialisations
