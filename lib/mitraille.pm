@@ -6,7 +6,6 @@ use File::Path;
 use File::Spec;
 use File::Basename;
 use Data::Dumper;
-use File::stat;
 
 use strict;
 
@@ -43,23 +42,56 @@ ERROR:
   die ("Command `@cmd' failed\n");
 }
 
-sub swapLink
+# The directory is on a file system shared between nodes
+
+sub isShared
 {
-  my $f = shift;
-  return unless (-l $f);
+  my $dir = shift;
+  chomp (my $type = `stat -f -c %T $dir 2>/dev/null`);
+  return grep { $type eq $_ } qw (nfs nfs4 lustre gpfs);
+}
 
-  $f = 'File::Spec'->rel2abs ($f);
+# Numbers of the test cases (mitraille_NNNN) in a directory
 
-  my $g = readlink ($f);
+sub testCaseNumbers
+{
+  my $dir = shift;
+  return map { m/mitraille_(\d+)$/o ? ($1) : () } <$dir/mitraille_*>;
+}
 
-  my $stf = stat (&dirname ($f));
-  my $stg = stat (&dirname ($g));
+# Create the directory of a new test case: in the build directory if it is
+# shared between nodes; otherwise (eg /tmp of a node) in $MITPACK_DIR, or in
+# $MIT_INSTALL_DIR/<version>, with a link in the build directory
 
-  return unless ($stf->dev == $stg->dev);
+sub newTestCaseDirectory
+{
+  my %args = @_;
 
-  unlink ($f);
-  rename ($g, $f);
-  symlink ($f, $g);
+  my $path = $args{build}->getPath ();
+
+  my $root = &isShared ($path) 
+           ? $path 
+           : ($ENV{MITPACK_DIR} || "$ENV{MIT_INSTALL_DIR}/" . lc ($args{version}));
+
+  &mkpath ($root) unless (-d $root);
+
+  my ($n) = sort { $b <=> $a } (0, &testCaseNumbers ($root), &testCaseNumbers ($path));
+
+# mkdir fails if the directory exists, eg created by another mitpack
+
+  my $dir;
+  while (1)
+    {
+      $dir = sprintf ("%s/mitraille_%4.4d", $root, ++$n);
+      last if (mkdir ($dir));
+      die ("Cannot create `$dir': $!\n") unless (-e $dir);
+    }
+
+  symlink ($dir, "$path/" . &basename ($dir))
+    or die ("Cannot create link to `$dir' in `$path'\n") 
+    unless ($root eq $path);
+
+  return $dir;
 }
 
 sub getProFile
@@ -77,27 +109,16 @@ sub createMitrailletteTestCase
 
   my $pro_file = &getProFile (build => $build, %args);
 
-  chdir ($ENV{MIT_INSTALL_DIR});
-  
-  my $dir = lc ($args{version});
-  
-  &mkpath ($dir) unless (-d $dir);
-  
-  my @test0 = map { &basename ($_) } <$dir/*>;
-  my %test0 = map { ($_, 1) } @test0;
-  
+  my $mitraillette = &newTestCaseDirectory (%args);
+
   &mitraille::generate::run
   (
     build           => $build->getInstallPath (),
     cycle           => $args{version},
     pro_file        => $pro_file,
     save            => $args{save},
+    job_dir         => $mitraillette,
   );
-  
-  my @test1 = map { &basename ($_) } <$dir/*>;
-  my ($mitraillette) = grep { ! $test0{$_} } @test1;
-  
-  $mitraillette = "$ENV{MIT_INSTALL_DIR}/$dir/$mitraillette";
   
   'FileHandle'->new (">$mitraillette/VERSION")->print ("$args{version}\n");
 
@@ -513,9 +534,9 @@ sub getLastMitraillette
 
   my $path = $build->getPath ();
 
-  my @mitraillette = sort grep { -d && m/mitraille_\d\d\d\d$/o } <$path/mitraille_????>;
+  my ($n) = sort { $b <=> $a } grep { -d sprintf ("%s/mitraille_%4.4d", $path, $_) } &testCaseNumbers ($path);
 
-  return pop (@mitraillette);
+  return defined ($n) ? sprintf ("%s/mitraille_%4.4d", $path, $n) : undef;
 }
 
 

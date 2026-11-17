@@ -59,11 +59,14 @@ function generate
     out=$dir.out/$station/$version
     mkdir -p $out $tmp/home
     echo "MITRA_PID=1" > $tmp/home/.mitrc
-    rm -rf $dir/$(echo $version | tr A-Z a-z)
+    job_dir=$dir/$(echo $version | tr A-Z a-z)/mitraille_0001
+    rm -rf $(dirname $job_dir)
+    mkdir -p $job_dir
+    # Revisions up to 3009aa4 number the test case from ~/.mitrc and ignore job_dir
     HOME=$tmp/home MIT_INSTALL_DIR=$dir STATION=$station \
     perl -I$dir/lib -Mmitraille::generate -e '
-      &mitraille::generate::run (build => "/path/to/pack", cycle => $ARGV[0], pro_file => $ARGV[1]);
-    ' $version $dir/PRO_FILE.$version
+      &mitraille::generate::run (build => "/path/to/pack", cycle => $ARGV[0], pro_file => $ARGV[1], job_dir => $ARGV[2]);
+    ' $version $dir/PRO_FILE.$version $job_dir
     for cjob in $dir/$(echo $version | tr A-Z a-z)/mitraille_*/*.cjob
     do
       sed -e "s,$dir,@MIT_INSTALL_DIR@,g" $cjob > $out/$(basename $cjob)

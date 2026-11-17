@@ -30,8 +30,11 @@ This script will :
 
 =item 
 
-Create the MITRAILLETTE test case; create a PRO_FILE, run mitraille.x, and remove dependencies
-between individual tasks.
+Create the MITRAILLETTE test case: a directory mitraille_NNNN holding one job per test of
+PRO_FILE.version, NNNN being one more than the highest test case number already there. When the
+pack (or build) directory is on a file system shared between nodes (NFS, Lustre, GPFS), the test
+case is created there; otherwise (eg /tmp of a node) it is created in $MITPACK_DIR, or in
+$MIT_INSTALL_DIR/version (lower case) if MITPACK_DIR is not set, with a link in the pack.
 
 =item
 
@@ -180,9 +183,6 @@ else
     die ("No version of tests was found\n") 
       unless ($opts{version});
     $mitraillette = &mitraille::createMitrailletteTestCase (build => $build, %opts);
-    my $local = $build->getPath () . '/' . &basename ($mitraillette);
-    symlink ($mitraillette, $local);
-    &mitraille::swapLink ($local);
   }
 
 if ($opts{list})

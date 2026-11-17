@@ -135,7 +135,6 @@ sub set_job
     v_cycle          => $args{cycle},
     my_own_pack      => $args{build} // '',
     nam_path         => "$args{ref_namdir}/$args{cycle_lc}",
-    mitra_pid        => $args{mitra_pid},
     mit_install_dir  => $args{mit_install_dir} // '',
   );
 
@@ -173,68 +172,6 @@ sub run
   $args{cycle_lc} = lc ($args{cycle});
 
   #---------------------------------------------------------------------------------------------------------
-  # 1. MITRA_PID handling (read ~/.mitrc, increment, etc.)
-  #---------------------------------------------------------------------------------------------------------
-
-  my $mitra_pid;
-  my $mitra_pid1;
-  my $mitra_namdir = '';
-
-  my $mitrc = "$ENV{HOME}/.mitrc";
-  if (! -f $mitrc)
-    {
-      (my $mf = 'FileHandle'->new (">$mitrc"))
-        or die ("Cannot create `$mitrc'");
-      $mf->print (<<'BASTA');
-# the next chain ID
-MITRA_PID=0002
-
-BASTA
-      $mf->close ();
-      $mitra_pid = 1;
-    }
-  else
-    {
-      (my $mf = 'FileHandle'->new ("<$mitrc"))
-        or die ("Cannot open `$mitrc'");
-      local $/ = undef;
-      my $mitrc_content = <$mf>;
-      $mf->close ();
-
-      if ($mitrc_content =~ /MITRA_PID\s*=\s*(\d+)/)
-        {
-          $mitra_pid = $1 + 0;
-        }
-      if ($mitrc_content =~ /MITRA_NAMDIR\s*=\s*(.+)/)
-        {
-          $mitra_namdir = $1;
-          $mitra_namdir =~ s/^"//;
-          $mitra_namdir =~ s/"$//;
-        }
-
-      if (! defined $mitra_pid)
-        {
-          die ("MITRA_PID variable is missing in \$HOME/.mitrc\n");
-        }
-      if ($mitra_pid <= 9999)
-        {
-          $mitra_pid1 = $mitra_pid + 1;
-        }
-      else
-        {
-          $mitra_pid1 = 1;
-        }
-      $mitrc_content =~ s/MITRA_PID\s*=\s*\d+/MITRA_PID=${mitra_pid1}/;
-      (my $mf2 = 'FileHandle'->new (">$mitrc"))
-        or die ("Cannot write `$mitrc'");
-      $mf2->print ($mitrc_content);
-      $mf2->close ();
-    }
-
-  $args{mitra_pid} = sprintf ("%04d", $mitra_pid);
-  $args{ref_namdir} = $mitra_namdir if ($mitra_namdir);
-
-  #---------------------------------------------------------------------------------------------------------
   # 2. Arguments tests
   #---------------------------------------------------------------------------------------------------------
 
@@ -246,9 +183,9 @@ BASTA
     {
       die ("PRO_FILE must be provided\n");
     }
-  if (! -d "$args{mit_install_dir}/$args{cycle_lc}")
+  if (! $args{job_dir})
     {
-      mkdir ("$args{mit_install_dir}/$args{cycle_lc}");
+      die ("Test case directory must be provided\n");
     }
   if (! -f $args{pro_file})
     {
@@ -308,15 +245,7 @@ BASTA
     }
 
   #---------------------------------------------------------------------------------------------------------
-  # 4. Initialisations
-  #---------------------------------------------------------------------------------------------------------
-
-  $args{job_dir} = "$args{mit_install_dir}/$args{cycle_lc}/mitraille_$args{mitra_pid}";
-
-  mkdir ($args{job_dir}) if (! -d $args{job_dir});
-
-  #---------------------------------------------------------------------------------------------------------
-  # 5. Process PRO_FILE and generate jobs
+  # 4. Process PRO_FILE and generate jobs
   #---------------------------------------------------------------------------------------------------------
 
   (my $proffh = 'FileHandle'->new ("<$args{pro_file}"))
