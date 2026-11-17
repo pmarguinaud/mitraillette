@@ -68,18 +68,39 @@ die;
   return \%p;
 }
 
-# Files of the station, or common to all stations
+# Shell code following the Slurm directives: task & thread counts
 
-sub station_file
-{
-  my %args = @_;
-  my $file = $args{file};
-  for my $dir ("$args{ref_jobsdir}/$args{station}", $args{ref_jobsdir})
-    {
-      return "$dir/$file" if (-f "$dir/$file");
-    }
-  die ("Cannot find `$file' for station `$args{station}'\n");
-}
+my $JOBHEADER = << 'EOF';
+
+NNODE_FC=__nnode_fc__
+NTASK_FC=__ntask_fc__
+NOPMP_FC=__nopmp_fc__
+
+let "NPROC=$NNODE_FC*$NTASK_FC"
+
+NNODE_IO=__nnode_io__
+NTASK_IO=__ntask_io__
+NOPMP_IO=__nopmp_io__
+
+if [ $NTASK_IO -eq 0 ]
+then
+  NTASK_IO=1
+fi
+
+let "NPROC_IO=$NNODE_IO*$NTASK_IO"
+
+EOF
+
+# End of the job
+
+my $JOBTRAILER = << 'EOF';
+
+sleep 2
+
+echo COMPLETED
+
+showslurminfo
+EOF
 
 # Slurm directives of a job: profiles with the partial flag use part of a single
 # node (sbatch.partial), that is ntask_fc x nopmp_fc cores; when Slurm counts
@@ -95,7 +116,7 @@ sub sbatch_header
 
   my $partial = "$args{ref_jobsdir}/$args{station}/sbatch.partial";
 
-  return (&read_file (&station_file (%args, file => 'sbatch.full')), $prof->{nopmp_fc})
+  return (&read_file ("$args{ref_jobsdir}/$args{station}/sbatch.full"), $prof->{nopmp_fc})
     unless ($prof->{partial} && (-f $partial));
 
   die ("$job_name: a partial node profile must use a single node, without IO server\n")
@@ -136,11 +157,11 @@ sub set_job
 
   my $cjob_file = "$args{job_dir}/${code_name}.cjob";
   $content = $sbatch
-           . &read_file (&station_file (%args, file => 'jobheader'))
+           . $JOBHEADER
            . "export STATION=$args{station}\n"
            . &read_file ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
            . $content
-           . &read_file (&station_file (%args, file => 'jobtrailer'));
+           . $JOBTRAILER;
 
   my $nam_path_plain = "$args{ref_namdir}/$args{cycle_lc}";
   my $mit_install_dir = $args{mit_install_dir} // '';
