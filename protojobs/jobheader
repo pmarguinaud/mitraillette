@@ -1,8 +1,3 @@
-#!/bin/bash
-__sbatch_resources__
-#SBATCH -J __jobname__
-#SBATCH --time "__job_walltime__"
-#SBATCH -o __jobname__.o%j
 
 NNODE_FC=__nnode_fc__
 NTASK_FC=__ntask_fc__

@@ -68,39 +68,42 @@ die;
   return \%p;
 }
 
-# Slurm resources of a job, from the profile and from the machine description
-# (machine.conf); profiles with the partial flag use part of a single node,
-# that is ntask_fc x nopmp_fc cores, in the partial partition
+# Files of the station, or common to all stations
 
-sub sbatch_resources
+sub station_file
 {
-  my ($prof, $machine, $job_name) = @_;
-
-  my $nnode = $prof->{nnode_fc} + $prof->{nnode_io};
-
-  my @r;
-
-  if ($prof->{partial} && $machine && $machine->{partial})
+  my %args = @_;
+  my $file = $args{file};
+  for my $dir ("$args{ref_jobsdir}/$args{station}", $args{ref_jobsdir})
     {
-      die ("$job_name: a partial node profile must use a single node, without IO server\n")
-        unless (($nnode == 1) && ($prof->{nnode_io} == 0));
-      die ("$job_name: a partial node profile must use at most $machine->{cores_per_node} cores\n")
-        if ($prof->{ntask_fc} * $prof->{nopmp_fc} > $machine->{cores_per_node});
-
-      my $partial = $machine->{partial};
-      push @r, "-p $partial->{partition}", "--nodes=1",
-               "--ntasks=$prof->{ntask_fc}", "--cpus-per-task=$prof->{nopmp_fc}";
-      push @r, "--mem-per-cpu=$partial->{mem_per_cpu}" if ($partial->{mem_per_cpu});
+      return "$dir/$file" if (-f "$dir/$file");
     }
-  else
-    {
-      my $full = $machine ? $machine->{full} : {exclusive => 1};
-      push @r, "-p $full->{partition}" if ($full->{partition});
-      push @r, "--nodes=$nnode";
-      push @r, "--exclusive" if ($full->{exclusive});
-    }
+  die ("Cannot find `$file' for station `$args{station}'\n");
+}
 
-  return join ("\n", map { "#SBATCH $_" } @r);
+# Slurm directives of a job: profiles with the partial flag use part of a single
+# node (sbatch.partial), that is ntask_fc x nopmp_fc cores; when Slurm counts
+# hyperthreads as CPUs (cpus_per_core > 1 in machine.conf), each OpenMP thread is
+# given all the CPUs of a core. Other jobs, and all jobs on stations without
+# sbatch.partial, use whole nodes (sbatch.full).
+
+sub sbatch_header
+{
+  my %args = @_;
+
+  my ($prof, $machine, $job_name) = @args{qw (prof machine job_name)};
+
+  my $partial = "$args{ref_jobsdir}/$args{station}/sbatch.partial";
+
+  return (&read_file (&station_file (%args, file => 'sbatch.full')), $prof->{nopmp_fc})
+    unless ($prof->{partial} && (-f $partial));
+
+  die ("$job_name: a partial node profile must use a single node, without IO server\n")
+    unless (($prof->{nnode_fc} == 1) && ($prof->{nnode_io} == 0));
+  die ("$job_name: a partial node profile must use at most $machine->{cores_per_node} cores\n")
+    if ($machine->{cores_per_node} && ($prof->{ntask_fc} * $prof->{nopmp_fc} > $machine->{cores_per_node}));
+
+  return (&read_file ($partial), $prof->{nopmp_fc} * ($machine->{cpus_per_core} || 1));
 }
 
 sub set_job
@@ -129,20 +132,21 @@ sub set_job
 
   my $NBNODES = $prof->{nnode_fc} + $prof->{nnode_io};
 
+  my ($sbatch, $cpus_per_task) = &sbatch_header (%args, prof => $prof);
+
   my $cjob_file = "$args{job_dir}/${code_name}.cjob";
-  $content = &read_file ("$args{ref_jobsdir}/$args{station}/multiheader")
+  $content = $sbatch
+           . &read_file (&station_file (%args, file => 'jobheader'))
            . "export STATION=$args{station}\n"
            . &read_file ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
            . $content
-           . &read_file ("$args{ref_jobsdir}/$args{station}/jobtrailer");
+           . &read_file (&station_file (%args, file => 'jobtrailer'));
 
   my $nam_path_plain = "$args{ref_namdir}/$args{cycle_lc}";
   my $mit_install_dir = $args{mit_install_dir} // '';
 
   for ($content)
     {
-      s/__sbatch_resources__/&sbatch_resources ($prof, $args{machine}, $job_name)/geo;
-
       s/__jobname__/O${code_name}/go;
 
       s/__nb_nodes__/${NBNODES}/go;
@@ -150,6 +154,7 @@ sub set_job
       s/__nnode_fc__/$prof->{nnode_fc}/go;
       s/__ntask_fc__/$prof->{ntask_fc}/go;
       s/__nopmp_fc__/$prof->{nopmp_fc}/go;
+      s/__cpus_per_task__/${cpus_per_task}/go;
 
       s/__nnode_io__/$prof->{nnode_io}/go;
       s/__ntask_io__/$prof->{ntask_io}/go;
@@ -313,7 +318,7 @@ BASTA
   $args{profil_table} = \%PROFIL_TABLE;
 
   #---------------------------------------------------------------------------------------------------------
-  # 3b. Read machine description (nodes & partitions), if any
+  # 3b. Read machine description (compute nodes), if any
   #---------------------------------------------------------------------------------------------------------
 
   my $machine_file = "$args{ref_jobsdir}/$args{station}/machine.conf";
