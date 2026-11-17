@@ -59,6 +59,147 @@ let "NPROC_IO=$NNODE_IO*$NTASK_IO"
 
 EOF
 
+# Shell settings, before the station settings (site.sh)
+
+my $JOBSHELL = << 'EOF';
+
+set -e
+set -E
+
+trap 'echo "FAILED at line $LINENO" ; showslurminfo ; exit 1' ERR
+trap 'echo "CANCELLED"; showslurminfo ; exit 1' TERM
+
+set -x
+
+EOF
+
+# Settings common to all stations, after the station settings (site.sh)
+
+my $JOBCONFIG = << 'EOF';
+
+# where the io_serv tools are
+IO_SERV_TOOLS_DIR=__mit_install_dir__/io_serv_tools
+
+# Where to save the files created or modified by the jobs (mitpack --save)
+SAVE_DIR=${WORKDIR}/mitsave
+
+if [ "x$STARTTIME" != "x" ]
+then
+TMP_LOC=$TMP_BASE/mitraille.${SLURM_JOBID}.${STARTTIME}
+else
+TMP_LOC=$TMP_BASE/mitraille.${SLURM_JOBID}
+fi
+
+\rm -rf $TMP_LOC/*
+mkdir -p $TMP_LOC
+
+# Location of input data: cycle independent data
+# FILE_PATH_DBASE.. for databases to use conf 923.
+# FILE_PATH for other files.
+
+# - for regular validation
+FILE_PATH=${INPUTFILES_HOME}/anal_mitraille
+FILE_PATH_DILA=${INPUTFILES_HOME}/dila
+FILE_PATH_DBASE1=${INPUTFILES_HOME}/const/923N/RELIEF_G/GTOPT030
+FILE_PATH_DBASE2=${INPUTFILES_HOME}/const/923N/SURFACE_G/version2/i3e
+FILE_PATH_DBASE3=${INPUTFILES_HOME}/const/923N/N108/i3e
+FILE_PATH_DBASE5=${INPUTFILES_HOME}/const/923N/SURFACE_L/EUROPEb_v1/i3e
+FILE_PATH_DBASE6=${INPUTFILES_HOME}/const/923N/CLIM_G/version2/i3e
+FILE_PATH_DBASE8=${INPUTFILES_HOME}/const/923N/CLIM_G/ozone/ascii
+FILE_PATH_DBASE9=${INPUTFILES_HOME}/const/923N/CLIM_G/aerosols/ascii
+FILE_PATH_IFS=${INPUTFILES_HOME}/ifs-tco399
+# - for scientific tests
+FILE_PATH_EXPS=${INPUTFILES_WORKDIR}
+
+# Location of input data: cycle dependent data
+# FILE_PATH_RRTMCST for constant files used in the RRTM radiation scheme.
+# FILE_PATH_ECOCLIMAP for "ecoclimap" files used in SURFEX.
+# FILE_PATH_PGD for databases to make PGD files.
+FILE_PATH_RRTMCST=${INPUTFILES_HOME}/const/rrtm_cst_cy47R1   ##netcdf files since cy47t1r1.v03 (= pre-cy48 v3)
+FILE_PATH_ECOCLIMAP=${INPUTFILES_HOME}/const/ecoclimap/V8.0
+FILE_PATH_PGD=${INPUTFILES_HOME}/const/mesonh/PGD/V02
+
+# Definition of cp/ecp for files and namelists
+# - for files which are on the local machine.
+CP="copy"    # 'ln -s' is forbidden for this command
+# - for files which may be either on a storage machine or on the local machine.
+ECP="ln -sf"   # 'ln -s' is allowed for this command
+
+# io_serv tools
+# IO POLL, recombining fields after io_serv
+IOPOLL="$IO_SERV_TOOLS_DIR/io_poll"
+# LFI copy, with repacking
+LFICP="lficp"
+# LFI move, with repacking
+LFIMV="lfimv"
+
+function lfimv
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_move -pack -force $s $d
+}
+
+function lficp
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_copy -pack -force $s $d
+}
+
+function copy
+{
+  d="${!#}"
+  set -- "${@:1:$#-1}"
+
+  for s in $*
+  do
+    mkdir -p $(dirname $d)
+    /bin/cp $s $d
+  done
+}
+
+function mpilaunch
+{
+  bin=$(dirname $1)
+  prefix=$(dirname $bin)
+
+  if [ -f "$prefix/mitpack.sh" ]
+  then
+    source "$prefix/mitpack.sh"
+  fi
+
+  ls -d ./* > dirlst
+
+  time \
+    $MPIAUTO \
+    --verbose --wrap --wrap-stdeo \
+        -nn $NNODE_FC -nnp $NTASK_FC -openmp $NOPMP_FC -- $* \
+    --  -nn $NNODE_IO -nnp $NTASK_IO -openmp $NOPMP_IO -- $*
+}
+
+function showslurminfo
+{
+if [ "x$STARTTIME" != "x" ]
+then
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages --starttime $STARTTIME
+else
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages
+fi
+}
+
+export PATH=__mit_install_dir__/bin:$PATH
+
+# xpnam
+XPNAM=xpnam
+
+# the io_serv tools need LFITOOLS
+export LFITOOLS=$EXEC_IFSAUX_LFITOOLS
+
+EOF
+
 # Beginning of the test case, before the pjob
 
 my $JOBPROLOGUE = << 'EOF';
@@ -171,6 +312,19 @@ sub sbatch_header
   return (&slurp ($partial), $prof->{nopmp_fc} * ($machine->{cpus_per_core} || 1));
 }
 
+# Station settings: site_<cycle>.sh if a cycle needs its own, otherwise site.sh
+
+sub site_file
+{
+  my %args = @_;
+  for my $site ("site_$args{cycle}.sh", "site.sh")
+    {
+      return "$args{ref_jobsdir}/$args{station}/$site" 
+        if (-f "$args{ref_jobsdir}/$args{station}/$site");
+    }
+  die ("No site.sh for station `$args{station}'\n");
+}
+
 sub set_job
 {
   my %args = @_;
@@ -198,7 +352,9 @@ sub set_job
   $content = $sbatch
            . $JOBHEADER
            . "export STATION=$args{station}\n"
-           . &slurp ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
+           . $JOBSHELL
+           . &slurp (&site_file (%args))
+           . $JOBCONFIG
            . $JOBPROLOGUE
            . $content
            . $JOBEPILOGUE

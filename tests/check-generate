@@ -39,7 +39,7 @@ function tree
   mkdir -p $dir
   if [ "x$2" = "x" ]
   then
-    (cd $top && tar cf - lib protojobs PRO_FILE.*) | (cd $dir && tar xf -)
+    (cd $top && tar cf - lib protojobs $(ls PRO_FILE.* | grep -v '\.bak$')) | (cd $dir && tar xf -)
   else
     (cd $top && git archive $2 lib protojobs $(git ls-tree --name-only $2 | grep '^PRO_FILE\.')) | (cd $dir && tar xf -)
   fi
@@ -50,11 +50,14 @@ function tree
 function generate
 {
   dir=$1
-  for config in $dir/protojobs/*/config_*
+  for pro_file in $dir/PRO_FILE.*
   do
-    station=$(basename $(dirname $config))
-    version=${config##*/config_}
-    [ -f "$dir/PRO_FILE.$version" ] || continue
+  version=${pro_file##*/PRO_FILE.}
+  for stdir in $dir/protojobs/*/
+  do
+    station=$(basename $stdir)
+    # Station settings: site.sh, or config_<version> before 98b9cca
+    [ -f $stdir/site.sh -o -f $stdir/site_$version.sh -o -f $stdir/config_$version ] || continue
     [ "$station" = "meteofrance" ] && continue  # Same files as belenos & taranis
     out=$dir.out/$station/$version
     mkdir -p $out $tmp/home
@@ -71,6 +74,7 @@ function generate
     do
       sed -e "s,$dir,@MIT_INSTALL_DIR@,g" $cjob > $out/$(basename $cjob)
     done
+  done
   done
 }
 
