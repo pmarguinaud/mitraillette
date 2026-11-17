@@ -1,5 +1,6 @@
 
-# MITRAILLE PROFILE = small, TIME = 10
+# MITRAILLE PROFILE = small
+# MITRAILLE TIME    = 10
 
 #============================================================
 #------------------------------------------------------------------------
@@ -15,21 +16,8 @@
 #------------------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: Conf 001HYD FPOS; change set of vertical levels; OFF-LINE                                               
+# MITRAILLE COMMENT = Conf 001HYD FPOS; change set of vertical levels; OFF-LINE
 
-CNMEXPL=GM_FPOF_HYD_MODEL_CHANGELEVELS
-
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
-
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/MASTERODB
-
-CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
 idate=2005071500
@@ -45,9 +33,6 @@ inflevgfin=105
 
 echo " Get the namelist "
 
-VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
-echo $VERSION
-NAM_PATH=__nam_path__
 $CP ${NAM_PATH}/${CNMEXPL}_fp.nam ${CNMEXPL}_fp.nam
 $CP ${NAM_PATH}/${CNMEXPL}_fc.nam ${CNMEXPL}_fc.nam
 
@@ -123,14 +108,7 @@ mpilaunch $MYOWNBIN
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file "
-    \cat $file
-  done
-fi
+shownode
 
 ls -l
 
@@ -169,14 +147,7 @@ mpilaunch $MYOWNBIN
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file "
-    \cat $file
-  done
-fi
+shownode
 
 ls -l
 
@@ -186,6 +157,3 @@ done # inum
 
 
 # -----------------------------------------------------------------------------
-
-
-echo "@@ `date`"

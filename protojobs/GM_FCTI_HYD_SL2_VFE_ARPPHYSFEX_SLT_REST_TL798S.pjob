@@ -1,5 +1,6 @@
 
-# MITRAILLE PROFILE = medium, TIME = 60
+# MITRAILLE PROFILE = medium
+# MITRAILLE TIME    = 60
 
 #============================================================
 #------------------------------------------------------------
@@ -21,21 +22,8 @@
 #------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: Conf 001HYD sl2tl TL798L90c2.4; DFI; ARPPHYSFEX; Standard Legendre transforms; Restart                  
+# MITRAILLE COMMENT = Conf 001HYD sl2tl TL798L90c2.4; DFI; ARPPHYSFEX; Standard Legendre transforms; Restart
 
-CNMEXPL=GM_FCTI_HYD_SL2_VFE_ARPPHYSFEX_SLT_REST_TL798S
-
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
-
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/MASTERODB
-
-CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
 #       **********************************
@@ -44,28 +32,13 @@ CNMEXPS="ARPE"
 
 echo " Get the namelist "
 
-VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
-echo $VERSION
-NAM_PATH=__nam_path__
 $CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
 $CP ${NAM_PATH}/${CNMEXPL}.selnam_exseg1 ${CNMEXPL}.selnam_exseg1
 $CP ${NAM_PATH}/${CNMEXPL}_CONVPGD.nam.diff ${CNMEXPL}_CONVPGD.nam.diff
 $CP ${NAM_PATH}/${CNMEXPL}_CONVPGD.selnam_exseg1.diff ${CNMEXPL}_CONVPGD.selnam_exseg1.diff
 $CP ${NAM_PATH}/${CNMEXPL}_CONVPREP.nam.diff ${CNMEXPL}_CONVPREP.nam.diff
 
-$XPNAM --delta="
-&NAMPAR0
-  MBX_SIZE=$MBX_SIZE,
-  NPROC=$NPROC,
-  MP_TYPE=$MP_TYPE,
-  LOPT_SCALAR=$LOPT_SCALAR,
-/
-&NAMPAR1
-  NSTRIN=$NPROC,
-  NSTROUT=$NPROC,
-  NCOMBFLEN=$NCOMBFLEN,
-/
-" namprovi=${CNMEXPL}.nam
+setnampar
 
 \cat < namprovi
 \cat < ${CNMEXPL}.selnam_exseg1
@@ -194,5 +167,3 @@ done
   $LFITOOLS lfidiff --lfi-file-1  ICMSH${CNMEXPS}+0028.0 --lfi-file-2 ICMSH${CNMEXPS}+0028.1
   echo " End of differences --------------------------------------------------------------------------------- "
 )
-
-echo "@@ `date`"

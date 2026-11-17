@@ -1,5 +1,6 @@
 
-# MITRAILLE PROFILE = medium, TIME = 10
+# MITRAILLE PROFILE = medium
+# MITRAILLE TIME    = 10
 
 #============================================================
 #------------------------------------------------------------------
@@ -12,21 +13,8 @@
 #------------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: Conf 001HYD FPOS INL; LELAM=T; CFPFMT=MODEL; IN-LINE                                                    
+# MITRAILLE COMMENT = Conf 001HYD FPOS INL; LELAM=T; CFPFMT=MODEL; IN-LINE
 
-CNMEXPL=L3_FPIN_HYD_MODEL_ARPPHYISBA
-
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
-
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/MASTERODB
-
-CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
 #       **********************************
@@ -35,9 +23,6 @@ CNMEXPS="ARPE"
 
 echo " Get the namelist "
 
-VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
-echo $VERSION
-NAM_PATH=__nam_path__
 $CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
 
 $XPNAM --delta="
@@ -181,5 +166,3 @@ echo " Check differences  "
 diff in_line off_line
 
 diff just_model in_line
-
-echo "@@ `date`"

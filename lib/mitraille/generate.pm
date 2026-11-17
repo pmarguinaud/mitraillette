@@ -59,6 +59,82 @@ let "NPROC_IO=$NNODE_IO*$NTASK_IO"
 
 EOF
 
+# Beginning of the test case, before the pjob
+
+my $JOBPROLOGUE = << 'EOF';
+
+CNMEXPL=__cnmexpl__
+echo CNMEXPL=$CNMEXPL
+
+NAM_PATH=__nam_path__
+BINDIR=__my_own_pack__/bin
+MYOWNBIN=$BINDIR/MASTERODB
+
+# Set the parallel distribution in namprovi; --io adds the number of IO server tasks
+
+function setnampar
+{
+  local io=""
+  if [ "x$1" = "x--io" ]
+  then
+    io="
+&NAMIO_SERV
+  NPROC_IO=$NPROC_IO,
+/"
+  fi
+  $XPNAM --delta="$io
+&NAMPAR0
+  MBX_SIZE=$MBX_SIZE,
+  NPROC=$NPROC,
+  MP_TYPE=$MP_TYPE,
+  LOPT_SCALAR=$LOPT_SCALAR,
+/
+&NAMPAR1
+  NSTRIN=$NPROC,
+  NSTROUT=$NPROC,
+  NCOMBFLEN=$NCOMBFLEN,
+/
+" namprovi=${CNMEXPL}.nam
+}
+
+# Copy the namelist of the test case, and set the parallel distribution in namprovi
+
+function getnam
+{
+  $CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+  setnampar "$@"
+}
+
+# Print the listings of the MPI tasks
+
+function shownode
+{
+  if [ -a NODE.001_01 ]
+  then
+    for file in NODE*
+    do
+      echo " Expand file $file "
+      \cat $file
+    done
+  fi
+}
+
+echo "@@ `date`"
+
+# Move on a workspace.
+cd $TMP_LOC
+
+EOF
+
+# End of the test case, after the pjob
+
+my $JOBEPILOGUE = << 'EOF';
+
+ls -l
+
+echo "@@ `date`"
+EOF
+
 # End of the job
 
 my $JOBTRAILER = << 'EOF';
@@ -106,10 +182,14 @@ sub set_job
 
   my $content = &slurp ($JOB);
 
-  my ($profile, $time) = ($content =~ m/PROFILE\s*=\s*(\S+)\s*,\s*TIME\s*=\s*(\d+)m?/oms);
+# Metadata: "# MITRAILLE KEY = value" lines (PROFILE, TIME in minutes, COMMENT)
 
-  die ("$JOB: no `# MITRAILLE PROFILE = <profile>, TIME = <minutes>' line\n")
-    unless ($profile && $time);
+  my %meta = ($content =~ m/^#\s*MITRAILLE\s+(\w+)\s*=[ \t]*(.*?)[ \t]*$/gm);
+
+  my ($profile, $time) = @meta{qw (PROFILE TIME)};
+
+  die ("$JOB: `# MITRAILLE PROFILE = <profile>' and `# MITRAILLE TIME = <minutes>' lines are required\n")
+    unless ($profile && defined ($time) && ($time =~ s/^(\d+)m?$/$1/o));
 
   my $prof = &getprofil (%args, profile => $profile);
 
@@ -119,7 +199,9 @@ sub set_job
            . $JOBHEADER
            . "export STATION=$args{station}\n"
            . &slurp ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
+           . $JOBPROLOGUE
            . $content
+           . $JOBEPILOGUE
            . $JOBTRAILER;
 
 # Values of the __placeholders__; upper case ones (eg __NTASKS__) belong to
@@ -128,6 +210,7 @@ sub set_job
   my %subst =
   (
     jobname          => "O${code_name}",
+    cnmexpl          => $code_name,
     nb_nodes         => $prof->{nnode_fc} + $prof->{nnode_io},
     (map { ($_, $prof->{$_}) } qw (nnode_fc ntask_fc nopmp_fc nnode_io ntask_io nopmp_io)),
     cpus_per_task    => $cpus_per_task,

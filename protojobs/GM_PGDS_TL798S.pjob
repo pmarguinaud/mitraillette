@@ -1,5 +1,6 @@
 
-# MITRAILLE PROFILE = tiny-manycore, TIME = 40
+# MITRAILLE PROFILE = tiny-manycore
+# MITRAILLE TIME    = 40
 
 #============================================================
 #------------------------------------------------------------
@@ -10,23 +11,12 @@
 #------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: make PGD-S file for ARPEGE TL798c2.4                                                                    
-
-CNMEXPL=GM_PGDS_TL798S
+# MITRAILLE COMMENT = make PGD-S file for ARPEGE TL798c2.4
 
 export DR_HOOK_NOT_MPI=1
 
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
+MYOWNBIN=$BINDIR/PGD
 
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/PGD
-
-CYCLE='__v_cycle__'
 
 domain2=ARP_TL798
 
@@ -36,9 +26,6 @@ domain2=ARP_TL798
 
 echo " Get the namelist "
 
-VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
-echo $VERSION
-NAM_PATH=__nam_path__
 $CP ${NAM_PATH}/${CNMEXPL}.selnam_pgd OPTIONS.nam
 \cat < OPTIONS.nam
 
@@ -85,15 +72,4 @@ mpilaunch $MYOWNBIN
 echo " Expand file LISTING_PGD.txt"
 \cat LISTING_PGD.txt
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file"
-    \cat $file
-  done
-fi
-
-ls -l
-
-echo "@@ `date`"
+shownode

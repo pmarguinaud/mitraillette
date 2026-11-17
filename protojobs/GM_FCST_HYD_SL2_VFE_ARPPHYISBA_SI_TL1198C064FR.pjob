@@ -1,5 +1,6 @@
 
-# MITRAILLE PROFILE = medium2, TIME = 600
+# MITRAILLE PROFILE = medium2
+# MITRAILLE TIME    = 600
 
 #============================================================
 #------------------------------------------------------------
@@ -19,21 +20,8 @@
 #------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: Conf 001HYD sl2tl TL1198L105c6.4 France; no DFI; VFE; ARPPHYISBA; SI                                    
+# MITRAILLE COMMENT = Conf 001HYD sl2tl TL1198L105c6.4 France; no DFI; VFE; ARPPHYISBA; SI
 
-CNMEXPL=GM_FCST_HYD_SL2_VFE_ARPPHYISBA_SI_TL1198C064FR
-
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
-
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/MASTERODB
-
-CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
 iaa=2015
@@ -46,24 +34,7 @@ ijj=22
 
 echo " Get the namelist "
 
-VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
-echo $VERSION
-NAM_PATH=__nam_path__
-$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
-
-$XPNAM --delta="
-&NAMPAR0
-  MBX_SIZE=$MBX_SIZE,
-  NPROC=$NPROC,
-  MP_TYPE=$MP_TYPE,
-  LOPT_SCALAR=$LOPT_SCALAR,
-/
-&NAMPAR1
-  NSTRIN=$NPROC,
-  NSTROUT=$NPROC,
-  NCOMBFLEN=$NCOMBFLEN,
-/
-" namprovi=${CNMEXPL}.nam
+getnam
 
 \cat < namprovi
 
@@ -136,15 +107,4 @@ mpilaunch $MYOWNBIN
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file "
-    \cat $file
-  done
-fi
-
-ls -l
-
-echo "@@ `date`"
+shownode
