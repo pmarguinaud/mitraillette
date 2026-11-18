@@ -1,5 +1,6 @@
 
-# MITRAILLE PROFILE = small, TIME = 10
+# MITRAILLE PROFILE = small
+# MITRAILLE TIME    = 10
 
 #============================================================
 #------------------------------------------------------------
@@ -19,21 +20,8 @@
 #------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: Conf IFS 001HYD sl2tl diab TCO399; no DFI; VFD; no SLHD                                                 
+# MITRAILLE COMMENT = Conf IFS 001HYD sl2tl diab TCO399; no DFI; VFD; no SLHD
 
-CNMEXPL=GE_FCST_HYD_SL2_VFD_ECPHY_SI_TCO399
-
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
-
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/MASTERODB
-
-CYCLE='__v_cycle__'
 
 #       **********************************
 #       *  Get the namelist              *
@@ -41,9 +29,6 @@ CYCLE='__v_cycle__'
 
 echo " Get the namelist "
 
-VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
-echo $VERSION
-NAM_PATH=__nam_path__
 $CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
 
 $XPNAM --delta="
@@ -143,17 +128,6 @@ mpilaunch $MYOWNBIN
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file "
-    \cat $file
-  done
-fi
+shownode
 
 #for iech in 06 12 18 24 30 36 42 48 54 60 66 72 78 84 90 96
-
-ls -l
-
-echo "@@ `date`"

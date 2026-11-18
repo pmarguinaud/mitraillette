@@ -1,5 +1,6 @@
 
-# MITRAILLE PROFILE = tiny-manycore, TIME = 10
+# MITRAILLE PROFILE = tiny-manycore
+# MITRAILLE TIME    = 10
 
 #============================================================
 #------------------------------------------------------------
@@ -7,21 +8,8 @@
 #------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: Conf 901                                                                                                
+# MITRAILLE COMMENT = Conf 901
 
-CNMEXPL=GE_C901
-
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
-
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/MASTERODB
-
-CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
 #       **********************************
@@ -30,9 +18,6 @@ CNMEXPS="ARPE"
 
 echo " Get the namelist "
 
-VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
-echo $VERSION
-NAM_PATH=__nam_path__
 $CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
 
 sed \
@@ -76,15 +61,4 @@ mpilaunch $MYOWNBIN
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file "
-    \cat $file
-  done
-fi
-
-ls -l
-
-echo "@@ `date`"
+shownode

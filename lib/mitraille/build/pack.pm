@@ -6,6 +6,8 @@ use strict;
 
 use base qw (mitraille::build);
 
+use mitraille::util qw (slurp);
+
 sub getExecutablePath
 {
   my ($self, $exec) = @_;
@@ -16,15 +18,6 @@ sub getLabel
 {
   my $self = shift;
   return &basename ($self->{path});
-}
-
-sub slurp
-{
-  my $f = shift;
-  (my $fh = 'FileHandle'->new ("<$f")) or die ("Cannot open `$f'");
-  local $/ =  undef; 
-  my $text = <$fh>;
-  return $text;
 }
 
 sub getGenesis
@@ -44,20 +37,6 @@ sub getCycle
     {
       return $genesis[$i+1] if ($genesis[$i] eq '-r');
     }
-}
-
-sub getVersion
-{
-  my $self = shift;
-  my $cycle = $self->getCycle ();
-
-  my %cycle2version =
-  (
-    '49t1' => 'CY49T1',
-    '50'   => 'CY50',
-  );
-
-  return $cycle2version{$cycle};
 }
 
 sub getInstallPath

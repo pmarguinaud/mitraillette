@@ -1,0 +1,9 @@
+#!/bin/bash
+#SBATCH -p shared
+#SBATCH -J __jobname__
+#SBATCH --nodes=1
+#SBATCH --ntasks=__ntask_fc__
+#SBATCH --cpus-per-task=__cpus_per_task__
+#SBATCH --mem-per-cpu=4G
+#SBATCH --time "__job_walltime__"
+#SBATCH -o __jobname__.o%j

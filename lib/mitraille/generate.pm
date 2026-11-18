@@ -2,26 +2,9 @@ package mitraille::generate;
 
 use strict;
 
-use Cwd qw (cwd);
-use File::Basename;
-use File::Spec;
 use FileHandle;
-use Data::Dumper;
 
-use base qw (Exporter);
-
-our @EXPORT_OK = qw (run);
-
-sub read_file
-{
-  my ($file) = @_;
-  (my $fh = 'FileHandle'->new ("<$file"))
-    or die ("Cannot open `$file'");
-  local $/ = undef;
-  my $content = <$fh>;
-  $fh->close ();
-  return $content;
-}
+use mitraille::util qw (slurp spew);
 
 sub getjob
 {
@@ -40,32 +23,306 @@ sub getjob
 sub getprofil
 {
   my %args = @_;
-  my $job_name = $args{job_name};
-  $job_name =~ s/\.pjob$//o;
-  my $profil_table = $args{profil_table};
+  my ($profile, $profil_table) = @args{qw (profile profil_table)};
+
+  die ("$args{job_name}: unknown profile `$profile' (see $args{profil_file})\n")
+    unless (exists ($profil_table->{$profile}));
 
   my @h = @{ $profil_table->{header} };
-
-  my @c;
-
-  if (exists ($profil_table->{$job_name}))
-    {
-      @c = @{ $profil_table->{$job_name} };
-    }
-  # Fallback: use endjob profile or defaults
-  elsif (exists ($profil_table->{"endjob"}))
-    {
-      @c = @{ $profil_table->{"endjob"} };
-    }
-  else
-    {
-die;
-      @c = (10, 0, 1, 1, 128);
-    }
+  my @c = @{ $profil_table->{$profile} };
 
   my %p = map { ($h[$_], $c[$_]) } (0 .. $#h);
 
   return \%p;
+}
+
+# Shell code following the Slurm directives: task & thread counts
+
+my $JOBHEADER = << 'EOF';
+
+NNODE_FC=__nnode_fc__
+NTASK_FC=__ntask_fc__
+NOPMP_FC=__nopmp_fc__
+
+let "NPROC=$NNODE_FC*$NTASK_FC"
+
+NNODE_IO=__nnode_io__
+NTASK_IO=__ntask_io__
+NOPMP_IO=__nopmp_io__
+
+if [ $NTASK_IO -eq 0 ]
+then
+  NTASK_IO=1
+fi
+
+let "NPROC_IO=$NNODE_IO*$NTASK_IO"
+
+EOF
+
+# Shell settings, before the station settings (site.sh)
+
+my $JOBSHELL = << 'EOF';
+
+set -e
+set -E
+
+trap 'echo "FAILED at line $LINENO" ; showslurminfo ; exit 1' ERR
+trap 'echo "CANCELLED"; showslurminfo ; exit 1' TERM
+
+set -x
+
+EOF
+
+# Settings common to all stations, after the station settings (site.sh)
+
+my $JOBCONFIG = << 'EOF';
+
+# where the io_serv tools are
+IO_SERV_TOOLS_DIR=__mit_install_dir__/io_serv_tools
+
+# Where to save the files created or modified by the jobs (mitpack --save)
+SAVE_DIR=${WORKDIR}/mitsave
+
+if [ "x$STARTTIME" != "x" ]
+then
+TMP_LOC=$TMP_BASE/mitraille.${SLURM_JOBID}.${STARTTIME}
+else
+TMP_LOC=$TMP_BASE/mitraille.${SLURM_JOBID}
+fi
+
+\rm -rf $TMP_LOC/*
+mkdir -p $TMP_LOC
+
+# Location of input data: cycle independent data
+# FILE_PATH_DBASE.. for databases to use conf 923.
+# FILE_PATH for other files.
+
+# - for regular validation
+FILE_PATH=${INPUTFILES_HOME}/anal_mitraille
+FILE_PATH_DILA=${INPUTFILES_HOME}/dila
+FILE_PATH_DBASE1=${INPUTFILES_HOME}/const/923N/RELIEF_G/GTOPT030
+FILE_PATH_DBASE2=${INPUTFILES_HOME}/const/923N/SURFACE_G/version2/i3e
+FILE_PATH_DBASE3=${INPUTFILES_HOME}/const/923N/N108/i3e
+FILE_PATH_DBASE5=${INPUTFILES_HOME}/const/923N/SURFACE_L/EUROPEb_v1/i3e
+FILE_PATH_DBASE6=${INPUTFILES_HOME}/const/923N/CLIM_G/version2/i3e
+FILE_PATH_DBASE8=${INPUTFILES_HOME}/const/923N/CLIM_G/ozone/ascii
+FILE_PATH_DBASE9=${INPUTFILES_HOME}/const/923N/CLIM_G/aerosols/ascii
+FILE_PATH_IFS=${INPUTFILES_HOME}/ifs-tco399
+# - for scientific tests
+FILE_PATH_EXPS=${INPUTFILES_WORKDIR}
+
+# Location of input data: cycle dependent data
+# FILE_PATH_RRTMCST for constant files used in the RRTM radiation scheme.
+# FILE_PATH_ECOCLIMAP for "ecoclimap" files used in SURFEX.
+# FILE_PATH_PGD for databases to make PGD files.
+FILE_PATH_RRTMCST=${INPUTFILES_HOME}/const/rrtm_cst_cy47R1   ##netcdf files since cy47t1r1.v03 (= pre-cy48 v3)
+FILE_PATH_ECOCLIMAP=${INPUTFILES_HOME}/const/ecoclimap/V8.0
+FILE_PATH_PGD=${INPUTFILES_HOME}/const/mesonh/PGD/V02
+
+# Definition of cp/ecp for files and namelists
+# - for files which are on the local machine.
+CP="copy"    # 'ln -s' is forbidden for this command
+# - for files which may be either on a storage machine or on the local machine.
+ECP="ln -sf"   # 'ln -s' is allowed for this command
+
+# io_serv tools
+# IO POLL, recombining fields after io_serv
+IOPOLL="$IO_SERV_TOOLS_DIR/io_poll"
+# LFI copy, with repacking
+LFICP="lficp"
+# LFI move, with repacking
+LFIMV="lfimv"
+
+function lfimv
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_move -pack -force $s $d
+}
+
+function lficp
+{
+  s=$1
+  d=$2
+  mkdir -p $(dirname $d)
+  $IO_SERV_TOOLS_DIR/lfi_copy -pack -force $s $d
+}
+
+function copy
+{
+  d="${!#}"
+  set -- "${@:1:$#-1}"
+
+  for s in $*
+  do
+    mkdir -p $(dirname $d)
+    /bin/cp $s $d
+  done
+}
+
+function mpilaunch
+{
+  bin=$(dirname $1)
+  prefix=$(dirname $bin)
+
+  if [ -f "$prefix/mitpack.sh" ]
+  then
+    source "$prefix/mitpack.sh"
+  fi
+
+  ls -d ./* > dirlst
+
+  time \
+    $MPIAUTO \
+    --verbose --wrap --wrap-stdeo \
+        -nn $NNODE_FC -nnp $NTASK_FC -openmp $NOPMP_FC -- $* \
+    --  -nn $NNODE_IO -nnp $NTASK_IO -openmp $NOPMP_IO -- $*
+}
+
+function showslurminfo
+{
+if [ "x$STARTTIME" != "x" ]
+then
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages --starttime $STARTTIME
+else
+sacct -j $SLURM_JOBID -o jobID,ncpu,TotalCPU,UserCPU,SystemCPU,Elapsed,State,ExitCode,AveVMSize,MaxVMSize,AveRSS,MaxRSS,AvePages
+fi
+}
+
+export PATH=__mit_install_dir__/bin:$PATH
+
+# xpnam
+XPNAM=xpnam
+
+# the io_serv tools need LFITOOLS
+export LFITOOLS=$EXEC_IFSAUX_LFITOOLS
+
+EOF
+
+# Beginning of the test case, before the pjob
+
+my $JOBPROLOGUE = << 'EOF';
+
+CNMEXPL=__cnmexpl__
+echo CNMEXPL=$CNMEXPL
+
+NAM_PATH=__nam_path__
+BINDIR=__my_own_pack__/bin
+MYOWNBIN=$BINDIR/MASTERODB
+
+# Set the parallel distribution in namprovi; --io adds the number of IO server tasks
+
+function setnampar
+{
+  local io=""
+  if [ "x$1" = "x--io" ]
+  then
+    io="
+&NAMIO_SERV
+  NPROC_IO=$NPROC_IO,
+/"
+  fi
+  $XPNAM --delta="$io
+&NAMPAR0
+  MBX_SIZE=$MBX_SIZE,
+  NPROC=$NPROC,
+  MP_TYPE=$MP_TYPE,
+  LOPT_SCALAR=$LOPT_SCALAR,
+/
+&NAMPAR1
+  NSTRIN=$NPROC,
+  NSTROUT=$NPROC,
+  NCOMBFLEN=$NCOMBFLEN,
+/
+" namprovi=${CNMEXPL}.nam
+}
+
+# Copy the namelist of the test case, and set the parallel distribution in namprovi
+
+function getnam
+{
+  $CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
+  setnampar "$@"
+}
+
+# Print the listings of the MPI tasks
+
+function shownode
+{
+  if [ -a NODE.001_01 ]
+  then
+    for file in NODE*
+    do
+      echo " Expand file $file "
+      \cat $file
+    done
+  fi
+}
+
+echo "@@ `date`"
+
+# Move on a workspace.
+cd $TMP_LOC
+
+EOF
+
+# End of the test case, after the pjob
+
+my $JOBEPILOGUE = << 'EOF';
+
+ls -l
+
+echo "@@ `date`"
+EOF
+
+# End of the job
+
+my $JOBTRAILER = << 'EOF';
+
+sleep 2
+
+echo COMPLETED
+
+showslurminfo
+EOF
+
+# Slurm directives of a job: profiles with the partial flag use part of a single
+# node (sbatch.partial), that is ntask_fc x nopmp_fc cores; when Slurm counts
+# hyperthreads as CPUs (cpus_per_core > 1 in machine.conf), each OpenMP thread is
+# given all the CPUs of a core. Other jobs, and all jobs on stations without
+# sbatch.partial, use whole nodes (sbatch.full).
+
+sub sbatch_header
+{
+  my %args = @_;
+
+  my ($prof, $machine, $job_name) = @args{qw (prof machine job_name)};
+
+  my $partial = "$args{ref_jobsdir}/$args{station}/sbatch.partial";
+
+  return (&slurp ("$args{ref_jobsdir}/$args{station}/sbatch.full"), $prof->{nopmp_fc})
+    unless ($prof->{partial} && (-f $partial));
+
+  die ("$job_name: a partial node profile must use a single node, without IO server\n")
+    unless (($prof->{nnode_fc} == 1) && ($prof->{nnode_io} == 0));
+  die ("$job_name: a partial node profile must use at most $machine->{cores_per_node} cores\n")
+    if ($machine->{cores_per_node} && ($prof->{ntask_fc} * $prof->{nopmp_fc} > $machine->{cores_per_node}));
+
+  return (&slurp ($partial), $prof->{nopmp_fc} * ($machine->{cpus_per_core} || 1));
+}
+
+# Station settings: site_<cycle>.sh if a cycle needs its own, otherwise site.sh
+
+sub site_file
+{
+  my %args = @_;
+  for my $site ("site_$args{cycle}.sh", "site.sh")
+    {
+      return "$args{ref_jobsdir}/$args{station}/$site" 
+        if (-f "$args{ref_jobsdir}/$args{station}/$site");
+    }
+  die ("No site.sh for station `$args{station}'\n");
 }
 
 sub set_job
@@ -74,56 +331,60 @@ sub set_job
 
   my $job_name = $args{job_name};
   my $code_name = $args{code_name};
-  my $build = $args{build} // '';
 
   my $JOB = &getjob (%args);
 
-  my $content = &read_file ($JOB);
+  my $content = &slurp ($JOB);
 
-  my ($prof, $time) = ($content =~ m/PROFILE\s*=\s*(\S+)\s*,\s*TIME\s*=\s*(\d+)m?/goms);
+# Metadata: "# MITRAILLE KEY = value" lines (PROFILE, TIME in minutes, COMMENT)
 
-  if ($prof && $time)
-    {
-      $prof = &getprofil (%args, job_name => $prof);
-      $prof->{walltime} = $time;
-    }
-  else
-    {
-      die $job_name;
-    }
+  my %meta = ($content =~ m/^#\s*MITRAILLE\s+(\w+)\s*=[ \t]*(.*?)[ \t]*$/gm);
 
-  my $NBNODES = $prof->{nnode_fc} + $prof->{nnode_io};
+  my ($profile, $time) = @meta{qw (PROFILE TIME)};
 
-  my $cjob_file = "$args{job_dir}/${code_name}.cjob";
-  $content = &read_file ("$args{ref_jobsdir}/$args{station}/multiheader")
+  die ("$JOB: `# MITRAILLE PROFILE = <profile>' and `# MITRAILLE TIME = <minutes>' lines are required\n")
+    unless ($profile && defined ($time) && ($time =~ s/^(\d+)m?$/$1/o));
+
+  my $prof = &getprofil (%args, profile => $profile);
+
+  my ($sbatch, $cpus_per_task) = &sbatch_header (%args, prof => $prof);
+
+  $content = $sbatch
+           . $JOBHEADER
            . "export STATION=$args{station}\n"
-           . &read_file ("$args{ref_jobsdir}/$args{station}/config_$args{cycle}")
+           . $JOBSHELL
+           . &slurp (&site_file (%args))
+           . $JOBCONFIG
+           . $JOBPROLOGUE
            . $content
-           . &read_file ("$args{ref_jobsdir}/$args{station}/jobtrailer");
+           . $JOBEPILOGUE
+           . $JOBTRAILER;
 
-  my $nam_path_plain = "$args{ref_namdir}/$args{cycle_lc}";
-  my $mit_install_dir = $args{mit_install_dir} // '';
+# Values of the __placeholders__; upper case ones (eg __NTASKS__) belong to
+# namelist templates and are replaced by the jobs themselves
+
+  my %subst =
+  (
+    jobname          => "O${code_name}",
+    cnmexpl          => $code_name,
+    nb_nodes         => $prof->{nnode_fc} + $prof->{nnode_io},
+    (map { ($_, $prof->{$_}) } qw (nnode_fc ntask_fc nopmp_fc nnode_io ntask_io nopmp_io)),
+    cpus_per_task    => $cpus_per_task,
+    job_walltime     => $time,
+    v_cycle          => $args{cycle},
+    my_own_pack      => $args{build} // '',
+    nam_path         => "$args{ref_namdir}/$args{cycle_lc}",
+    mit_install_dir  => $args{mit_install_dir} // '',
+  );
 
   for ($content)
     {
-      s/__jobname__/O${code_name}/go;
+      s{__([a-z][a-z0-9_]*)__}
+       {
+         exists ($subst{$1}) or die ("$JOB: unknown placeholder `__$1__'\n");
+         $subst{$1}
+       }geo;
 
-      s/__nb_nodes__/${NBNODES}/go;
-
-      s/__nnode_fc__/$prof->{nnode_fc}/go;
-      s/__ntask_fc__/$prof->{ntask_fc}/go;
-      s/__nopmp_fc__/$prof->{nopmp_fc}/go;
-
-      s/__nnode_io__/$prof->{nnode_io}/go;
-      s/__ntask_io__/$prof->{ntask_io}/go;
-      s/__nopmp_io__/$prof->{nopmp_io}/go;
-
-      s/__job_walltime__/$prof->{walltime}/go;
-      s/__v_cycle__/$args{cycle}/go;
-      s/__my_own_pack__/${build}/go;
-      s/__nam_path__/${nam_path_plain}/go;
-      s/__mitra_pid__/$args{mitra_pid}/go;
-      s/__mit_install_dir__/${mit_install_dir}/go;
       if ($args{save})
         {
           s{^([ \t]*)(mpilaunch\b.*)$}
@@ -131,10 +392,7 @@ sub set_job
         }
     }
 
-  (my $cj = 'FileHandle'->new (">$cjob_file"))
-    or die ("Cannot write `$cjob_file'");
-  $cj->print ($content);
-  $cj->close ();
+  &spew ("$args{job_dir}/${code_name}.cjob", $content);
 }
 
 #---------------------------------------------------------------------------------------------------------
@@ -153,68 +411,6 @@ sub run
   $args{cycle_lc} = lc ($args{cycle});
 
   #---------------------------------------------------------------------------------------------------------
-  # 1. MITRA_PID handling (read ~/.mitrc, increment, etc.)
-  #---------------------------------------------------------------------------------------------------------
-
-  my $mitra_pid;
-  my $mitra_pid1;
-  my $mitra_namdir = '';
-
-  my $mitrc = "$ENV{HOME}/.mitrc";
-  if (! -f $mitrc)
-    {
-      (my $mf = 'FileHandle'->new (">$mitrc"))
-        or die ("Cannot create `$mitrc'");
-      $mf->print (<<'BASTA');
-# the next chain ID
-MITRA_PID=0002
-
-BASTA
-      $mf->close ();
-      $mitra_pid = 1;
-    }
-  else
-    {
-      (my $mf = 'FileHandle'->new ("<$mitrc"))
-        or die ("Cannot open `$mitrc'");
-      local $/ = undef;
-      my $mitrc_content = <$mf>;
-      $mf->close ();
-
-      if ($mitrc_content =~ /MITRA_PID\s*=\s*(\d+)/)
-        {
-          $mitra_pid = $1 + 0;
-        }
-      if ($mitrc_content =~ /MITRA_NAMDIR\s*=\s*(.+)/)
-        {
-          $mitra_namdir = $1;
-          $mitra_namdir =~ s/^"//;
-          $mitra_namdir =~ s/"$//;
-        }
-
-      if (! defined $mitra_pid)
-        {
-          die ("MITRA_PID variable is missing in \$HOME/.mitrc\n");
-        }
-      if ($mitra_pid <= 9999)
-        {
-          $mitra_pid1 = $mitra_pid + 1;
-        }
-      else
-        {
-          $mitra_pid1 = 1;
-        }
-      $mitrc_content =~ s/MITRA_PID\s*=\s*\d+/MITRA_PID=${mitra_pid1}/;
-      (my $mf2 = 'FileHandle'->new (">$mitrc"))
-        or die ("Cannot write `$mitrc'");
-      $mf2->print ($mitrc_content);
-      $mf2->close ();
-    }
-
-  $args{mitra_pid} = sprintf ("%04d", $mitra_pid);
-  $args{ref_namdir} = $mitra_namdir if ($mitra_namdir);
-
-  #---------------------------------------------------------------------------------------------------------
   # 2. Arguments tests
   #---------------------------------------------------------------------------------------------------------
 
@@ -226,9 +422,9 @@ BASTA
     {
       die ("PRO_FILE must be provided\n");
     }
-  if (! -d "$args{mit_install_dir}/$args{cycle_lc}")
+  if (! $args{job_dir})
     {
-      mkdir ("$args{mit_install_dir}/$args{cycle_lc}");
+      die ("Test case directory must be provided\n");
     }
   if (! -f $args{pro_file})
     {
@@ -274,17 +470,21 @@ BASTA
   $pf->close ();
 
   $args{profil_table} = \%PROFIL_TABLE;
+  $args{profil_file} = $profil_file;
 
   #---------------------------------------------------------------------------------------------------------
-  # 4. Initialisations
+  # 3b. Read machine description (compute nodes), if any
   #---------------------------------------------------------------------------------------------------------
 
-  $args{job_dir} = "$args{mit_install_dir}/$args{cycle_lc}/mitraille_$args{mitra_pid}";
-
-  mkdir ($args{job_dir}) if (! -d $args{job_dir});
+  my $machine_file = "$args{ref_jobsdir}/$args{station}/machine.conf";
+  if (-f $machine_file)
+    {
+      $args{machine} = do ($machine_file)
+        or die ("Cannot read `$machine_file': " . ($@ || $!) . "\n");
+    }
 
   #---------------------------------------------------------------------------------------------------------
-  # 5. Process PRO_FILE and generate jobs
+  # 4. Process PRO_FILE and generate jobs
   #---------------------------------------------------------------------------------------------------------
 
   (my $proffh = 'FileHandle'->new ("<$args{pro_file}"))

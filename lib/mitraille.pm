@@ -6,7 +6,6 @@ use File::Path;
 use File::Spec;
 use File::Basename;
 use Data::Dumper;
-use File::stat;
 
 use strict;
 
@@ -15,18 +14,7 @@ use mitraille::build;
 use mitraille::node;
 use mitraille::printer::terminal;
 use mitraille::generate;
-
-sub center
-{
-  my ($s, $n) = @_; 
-  my $i = 0;
-  while (length ($s) < $n) 
-    {   
-      $s = $i % 2 ? " $s" : "$s ";
-      $i++;
-    }   
-  return $s; 
-}
+use mitraille::util qw (slurp);
 
 sub runCommand
 {
@@ -54,23 +42,56 @@ ERROR:
   die ("Command `@cmd' failed\n");
 }
 
-sub swapLink
+# The directory is on a file system shared between nodes
+
+sub isShared
 {
-  my $f = shift;
-  return unless (-l $f);
+  my $dir = shift;
+  chomp (my $type = `stat -f -c %T $dir 2>/dev/null`);
+  return grep { $type eq $_ } qw (nfs nfs4 lustre gpfs);
+}
 
-  $f = 'File::Spec'->rel2abs ($f);
+# Numbers of the test cases (mitraille_NNNN) in a directory
 
-  my $g = readlink ($f);
+sub testCaseNumbers
+{
+  my $dir = shift;
+  return map { m/mitraille_(\d+)$/o ? ($1) : () } <$dir/mitraille_*>;
+}
 
-  my $stf = stat (&dirname ($f));
-  my $stg = stat (&dirname ($g));
+# Create the directory of a new test case: in the build directory if it is
+# shared between nodes; otherwise (eg /tmp of a node) in $MITPACK_DIR, or in
+# $MIT_INSTALL_DIR/<version>, with a link in the build directory
 
-  return unless ($stf->dev == $stg->dev);
+sub newTestCaseDirectory
+{
+  my %args = @_;
 
-  unlink ($f);
-  rename ($g, $f);
-  symlink ($f, $g);
+  my $path = $args{build}->getPath ();
+
+  my $root = &isShared ($path) 
+           ? $path 
+           : ($ENV{MITPACK_DIR} || "$ENV{MIT_INSTALL_DIR}/" . lc ($args{version}));
+
+  &mkpath ($root) unless (-d $root);
+
+  my ($n) = sort { $b <=> $a } (0, &testCaseNumbers ($root), &testCaseNumbers ($path));
+
+# mkdir fails if the directory exists, eg created by another mitpack
+
+  my $dir;
+  while (1)
+    {
+      $dir = sprintf ("%s/mitraille_%4.4d", $root, ++$n);
+      last if (mkdir ($dir));
+      die ("Cannot create `$dir': $!\n") unless (-e $dir);
+    }
+
+  symlink ($dir, "$path/" . &basename ($dir))
+    or die ("Cannot create link to `$dir' in `$path'\n") 
+    unless ($root eq $path);
+
+  return $dir;
 }
 
 sub getProFile
@@ -88,78 +109,34 @@ sub createMitrailletteTestCase
 
   my $pro_file = &getProFile (build => $build, %args);
 
-  chdir ($ENV{MIT_INSTALL_DIR});
-  
-  my $dir = lc ($args{version});
-  
-  &mkpath ($dir) unless (-d $dir);
-  
-  my @test0 = map { &basename ($_) } <$dir/*>;
-  my %test0 = map { ($_, 1) } @test0;
-  
+  my $mitraillette = &newTestCaseDirectory (%args);
+
   &mitraille::generate::run
   (
     build           => $build->getInstallPath (),
     cycle           => $args{version},
     pro_file        => $pro_file,
     save            => $args{save},
+    job_dir         => $mitraillette,
   );
   
-  my @test1 = map { &basename ($_) } <$dir/*>;
-  my ($mitraillette) = grep { ! $test0{$_} } @test1;
-  
-  $mitraillette = "$ENV{MIT_INSTALL_DIR}/$dir/$mitraillette";
-  
-  my @cjob = sort <$mitraillette/*.cjob>;
-
-  for my $cjob (@cjob)
-    {
-      &patchCJob (cjob => $cjob, build => $build);
-    }
-
   'FileHandle'->new (">$mitraillette/VERSION")->print ("$args{version}\n");
 
   return $mitraillette;
-}
-
-sub patchCJob
-{
-  my %args = @_;
-
-  my ($build, $cjob) = @args{qw (build cjob)};
-  
-  my $install = $build->getInstallPath ();
-
-  my @text = do { my $fh = 'FileHandle'->new ("<$cjob"); <$fh> };
-
-  for (@text)
-    {
-     if (/test\.x\d+/o)
-       {
-         $_ = "\n";
-       }
-    }
-
-  'FileHandle'->new (">$cjob")->print (join ('', @text));
 }
 
 sub submitJob
 {
   my %args = @_;
   my $job = $args{job};
+# When submitting from within a Slurm job, sbatch would pass the CPU mask of
+# this job to the new job; srun then fails in jobs using part of a node
+  local %ENV = %ENV;
+  delete @ENV{grep { m/^SLURM_CPU_BIND/o } keys (%ENV)};
   my $out = &runCommand (%args, stdout => 1, command => ['sbatch', $job]);
   my ($id) = ($out =~ m/Submitted batch job (\d+)/o);
   'FileHandle'->new (">$job.id")->print ("$id\n");
   return $id;
-}
-
-sub slurp
-{
-  my $f = shift;
-  (my $fh = 'FileHandle'->new ("<$f")) or die ("Cannot open `$f'");
-  local $/ =  undef; 
-  my $text = <$fh>;
-  return $text;
 }
 
 sub cancelJob
@@ -228,6 +205,46 @@ sub runMitrailletteTestCase
 
 }
 
+# Job status: the first failure found in the job output (earliest in the text),
+# otherwise COMPLETED if the job ran to its end, otherwise UNKNOWN
+
+my $FAIL = 'black on_red';
+
+my @STATUS =
+(
+# Message in the output                                                         Status              Color
+  [qr/Command exited with non-zero status/,                                     'non-zero status',  $FAIL],
+  [qr/Process received signal/,                                                 'signalled',        $FAIL],
+  [qr/mpirun detected that one or more processes exited with non-zero status/,  'non-zero status',  $FAIL],
+  [qr/ABOR1/,                                                                   'ABOR1',            $FAIL],
+  [qr/ABORT!/,                                                                  'ABORT!',           $FAIL],
+  [qr/FAILED/,                                                                  'FAILED',           $FAIL],
+  [qr/SIGSEGV/,                                                                 'SIGSEGV',          $FAIL],
+  [qr/CANCELLED/,                                                               'CANCELLED',        $FAIL],
+  [qr/forrtl: severe/,                                                          'forrtl: severe',   $FAIL],
+  [qr/BAD TERMINATION/,                                                         'BAD TERMINATION',  $FAIL],
+  [qr/SPECTRAL NORMS[^\n]*NaN/,                                                 'NaN',              $FAIL],
+  [qr/Cannot access ..\/(?:MASTERODB|ARPEXE)./s,                                'Missing',          $FAIL],
+);
+
+my $STATUS_RE = join ('|', map { "($_->[0])" } @STATUS);
+$STATUS_RE = qr/$STATUS_RE/;
+
+my %COLOR = ((map { ($_->[1], $_->[2]) } @STATUS), COMPLETED => 'green', UNKNOWN => 'yellow');
+
+sub jobStatus
+{
+  my $text = shift;
+
+  if ($text =~ $STATUS_RE)
+    {
+      my ($i) = grep { defined ($-[$_+1]) } (0 .. $#STATUS);
+      return $STATUS[$i][1];
+    }
+
+  return $text =~ m/COMPLETED/o ? 'COMPLETED' : 'UNKNOWN';
+}
+
 sub jobInfo
 {
   my $o = shift;
@@ -235,41 +252,10 @@ sub jobInfo
 
   my $text = &slurp ($o);
 
-  my $ABORTED = << 'EOF';
-
-#########################################
-#        BULL - METEO-FRANCE            #
-#        Job Accounting                 #
-#########################################
-EOF
-
-  if (substr ($text, 0, length ($ABORTED)) eq $ABORTED)
-    {
-      unlink ($o);
-      return;
-    }
-
   my ($CNMEXPL) = ($text =~ m/CNMEXPL=(\w+)/goms);
   $CNMEXPL or return {status => 'UNKNOWN', CNMEXPL => '?'};
 
-  my ($status) = ($text =~ m/(Command exited with non-zero status|Process received signal|mpirun detected that one or more processes exited with non-zero status|ABOR1|ABORT!|FAILED|SIGSEGV|CANCELLED|forrtl: severe|BAD TERMINATION|SPECTRAL NORMS[^\n]*NaN|Cannot access ..\/(?:MASTERODB|ARPEXE).)/goms);
-
-  $status =~ s/^forrtl:.*SIGSEGV/SIGSEGV/o if ($status);
-  $status = 'NaN' if ($status && ($status =~ m/NaN/o));
-  $status = 'Missing' if ($status && ($status =~ m/Cannot access/o));
-  $status = 'non-zero status' if ($status && ($status =~ m/^mpirun detected/o));
-  $status = 'non-zero status' if ($status && ($status =~ m/^Command exited with non-zero status/o));
-  $status = 'signalled' if ($status && ($status =~ m/^Process received signal/o));
-  
-
-  $status = substr ($status, 0, 20) if ($status);
-
-  unless ($status)
-    {
-      ($status) = ($text =~ m/(COMPLETED)/goms);
-    }
-
-  $status ||= 'UNKNOWN';
+  my $status = &jobStatus ($text);
 
   my %h;
 
@@ -293,44 +279,7 @@ sub getColorStatus
 {
   my $text = shift;
   (my $status = $text) =~ s/(?:^\s*|\s*$)//go;
-
-  my %color = 
-  (
-    FAILED            => 'black on_red',
-    ABOR1             => 'black on_red',
-    COMPLETED         => 'green',
-    'forrtl: severe'  => 'black on_red',
-    SIGSEGV           => 'black on_red',
-    UNKNOWN           => 'yellow',
-    CANCELLED         => 'black on_red',
-    'BAD TERMINATION' => 'black on_red',
-    NaN               => 'black on_red',
-    Missing           => 'black on_red',
-    'non-zero status' => 'black on_red',
-    'ABORT!'          => 'black on_red',
-    signalled         => 'black on_red',
-  );
-
-  return $color{$status};
-}
-
-sub colorStatus
-{
-  my $text = shift;
-  &colorMessage (&getColorStatus ($text), $text);
-}
-
-sub colorMessage
-{
-  my ($color, $text) = @_;
-  if ((-t STDOUT) && $color)
-    {
-      return &colored ([$color], $text);
-    }
-  else
-    {
-      return $text;
-    }
+  return $COLOR{$status};
 }
 
 sub listTestCases
@@ -450,7 +399,7 @@ sub showStatus
   if ($mitraillette1 && $mitraillette2)
     {
       # STATUS
-      push @length, 10;
+      push @length, 12;
       push @justify, 'center';
       my @F = 'mitraille::node'->fields ();
       push @length, (11) x scalar (@F);
@@ -524,48 +473,38 @@ sub showStatus
 
       if ($o1 && $o2 && ! grep ({ $_->{status} ne 'COMPLETED' } ($info0, $info1, $info2)))
         {
-          my @txtmess;
+          my $diff01 = &mitraille::node::compare ($o0, $o1);
+          my $diff21 = &mitraille::node::compare ($o2, $o1);
 
-          my @diff01 = &mitraille::node::diff ($o0, $o1);
-          my @diff21 = &mitraille::node::diff ($o2, $o1);
-
-          if (@diff01 && @diff21)
+          if ($diff01->{struct} || $diff21->{struct})
             {
-              for my $i (0 .. $#diff01)
-                {
-                  push @txtmess, "$diff01[$i] $diff21[$i]";
-                  $colmess = 'red on_black' if ($diff01[$i] < $diff21[$i]);
-                }
+              push @line, '<red on_black>', 'DIFF-STRUCT';
             }
-          elsif (@diff01)
+          elsif ($diff01->{diff})
             {
-              for my $i (0 .. $#diff01)
+              my @txtmess;
+              $colmess = '';
+              for my $i (0 .. $#{ $diff01->{digits} })
                 {
-                  push @txtmess, "$diff01[$i]   inf";
-                  $colmess = 'red on_black';
+                  my $d01 = $diff01->{digits}[$i];
+                  my $d21 = $diff21->{diff} ? $diff21->{digits}[$i] : '  inf';
+                  push @txtmess, "$d01 $d21";
+                  $colmess = 'red on_black' if ((! $diff21->{diff}) || ($d01 < $d21));
                 }
-            }
-          
-          $txtmess = "DIFF[" . join ("|", @txtmess) . "]" if (@txtmess);
-
-          if (@txtmess)
-            {
-              push @line, "<$colmess>", 'DIFF', map { ("<$colmess>", $_) } @txtmess;
+              push @line, "<$colmess>", "DIFF\@$diff01->{step}", map { ("<$colmess>", $_) } @txtmess;
             }
 
         }
       elsif ($o1 && ! grep ({ $_->{status} ne 'COMPLETED' } ($info0, $info1)))
         {
-          my @diff01 = &mitraille::node::diff ($o0, $o1);
-          if (@diff01)
+          my $diff01 = &mitraille::node::compare ($o0, $o1);
+          if ($diff01->{struct})
             {
-              $txtmess = 'DIFF';
-              $colmess = 'red on_black';
+              push @line, '<red on_black>', 'DIFF-STRUCT';
             }
-
-          if ($txtmess)
+          elsif ($diff01->{diff})
             {
-              push @line, "<$colmess>", $txtmess;
+              push @line, '<red on_black>', "DIFF\@$diff01->{step}";
             }
         }
       elsif ($o1 && ($info0->{status} ne 'UNKNOWN') && ($info0->{status} ne $info1->{status}))
@@ -582,12 +521,6 @@ sub showStatus
 
 }
 
-sub statusEquiv
-{
-  my ($status1, $status2) = @_;
-  return (($status1 eq 'COMPLETED') == ($status2 eq 'COMPLETED')) || ($status1 eq 'UNKNOWN') || ($status2 eq 'UNKNOWN');
-}
-
 sub getLastMitraillette
 {
   my %args = @_;
@@ -596,9 +529,9 @@ sub getLastMitraillette
 
   my $path = $build->getPath ();
 
-  my @mitraillette = sort grep { -d && m/mitraille_\d\d\d\d$/o } <$path/mitraille_????>;
+  my ($n) = sort { $b <=> $a } grep { -d sprintf ("%s/mitraille_%4.4d", $path, $_) } &testCaseNumbers ($path);
 
-  return pop (@mitraillette);
+  return defined ($n) ? sprintf ("%s/mitraille_%4.4d", $path, $n) : undef;
 }
 
 

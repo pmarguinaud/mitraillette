@@ -41,6 +41,29 @@ sub new
   return $class->new (%args);
 }
 
+# Version of the tests (PRO_FILE.<version> in $MIT_INSTALL_DIR) for the cycle
+# of the build: PRO_FILE.CY<cycle> if it exists, otherwise the only PRO_FILE of
+# the same major cycle (eg CY50T1 for 50t2); undef if there is none or several
+
+sub getVersion
+{
+  my $self = shift;
+
+  my $cycle = $self->getCycle ();
+  return unless (defined ($cycle));
+
+  my @version = map { m/PRO_FILE\.(CY\w+)$/o ? ($1) : () } <$ENV{MIT_INSTALL_DIR}/PRO_FILE.CY*>;
+
+  my $exact = 'CY' . uc ($cycle);
+  return $exact if (grep { $_ eq $exact } @version);
+
+  my ($major) = ($cycle =~ m/^(\d+)/o);
+  return unless (defined ($major));
+
+  my @same = grep { m/^CY${major}(?:\D|$)/ } @version;
+  return @same == 1 ? $same[0] : undef;
+}
+
 sub getPath
 {
   my $self = shift;

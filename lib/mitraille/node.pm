@@ -1,72 +1,55 @@
 package mitraille::node;
 
+# Comparison of the spectral norms printed by two runs of a test case
+
 use strict;
 
 use FileHandle;
-use Data::Dumper;
 
-my @spnorms = ("VORTICITY", "DIVERGENCE", "TEMPERATURE", "KINETIC ENERGY");
+# Spectral norms of a job output: a list of [step, field, value]; step is the
+# NSTEP of the preceding "NORMS AT NSTEP" line, or `-' for the norms printed
+# before the first time step
 
-sub xave
+#  NORMS AT NSTEP CNT4    1
+#  SPECTRAL NORMS -    LOG(PREHYDS)    0.114991694787231E+02
+#  LEV     VORTICITY             DIVERGENCE           TEMPERATURE            HUMIDITY             KINETIC ENERGY
+#  AVE 0.227212030872266E-04 0.567044894920163E-05 0.256646026048479E+03 0.430636858016040E-02 0.153979781408458E+03
+
+sub norms
 {
   my $f = shift;
-  my $fh = 'FileHandle'->new ("<$f");
 
+  my $fh = 'FileHandle'->new ("<$f");
   $fh or die ("Cannot open $f\n");
 
-  my @gpregs;
-
-
   my @line = <$fh>;
+
+  my $step = '-';
   my @x;
-  MAIN: while (defined (my $line = shift (@line)))
+
+  while (defined (my $line = shift (@line)))
     {
-      AGAIN:
-
-#  GPNORMS OF FIELDS TO BE WRITTEN OUT ON FILE :
-#                                    AVERAGE               MINIMUM               MAXIMUM
-#  PROFTEMPERATURE  : 0.291195674511515E+03 0.201887381812149E+03 0.315847778487033E+03
-
-      if ($line =~ s/^\s*SPECTRAL\s+NORMS\s+-\s+LOG\(PREHYDS\)\s+(\S+)//o)
+      if ($line =~ m/^\s*NORMS AT NSTEP CNT4\s+(\d+)/o)
         {
-          my $LOG_PREHYDS = $1;
+          $step = $1;
+          next;
+        }
 
-          push @x, [LOG_PREHYDS => $LOG_PREHYDS];
+      next unless ($line =~ m/^\s*SPECTRAL\s+NORMS\s+-\s+LOG\(PREHYDS\)\s+(\S+)/o);
 
-          AGAIN_SPNORMS:
+      push @x, [$step, LOG_PREHYDS => $1];
 
-          goto AGAIN
-            unless (($line = shift (@line)) =~ s/^\s+LEV\s+//o);
+# Field names (separated by two blanks at least), then their average values
 
-          my %index;
-          %index = ();
-          for my $spnorm (@spnorms)
-            {
-              my $index = index ($line, $spnorm);
-              $index{$spnorm} = $index 
-                if ($index >= 0);
-            }
-
-          my @spnormk = sort { $index{$a} <=> $index{$b} } 
-                        grep { defined $index{$_} } 
-                        @spnorms;
-
-          goto AGAIN
-            unless (($line = shift (@line)) =~ s/^\s+AVE\s+//o);
-
-          my @spnormv = split (m/\s+/o, $line);
-
-          while (@spnormk)
-            {
-              my $spnormk = shift (@spnormk);
-              my $spnormv = shift (@spnormv);
-              die ("$spnormk, $spnormv\n")
-                unless (defined ($spnormk) && defined ($spnormv));
-              push @x, [ $spnormk, $spnormv ];
-            }
-
-          goto AGAIN_SPNORMS;
-
+      while (@line && ($line[0] =~ m/^\s+LEV\s+(.*?)\s*$/o))
+        {
+          my @k = split (m/\s{2,}/o, $1);
+          shift (@line);
+          last unless (@line && ($line[0] =~ m/^\s+AVE\s+(.*?)\s*$/o));
+          my @v = split (m/\s+/o, $1);
+          shift (@line);
+          push @x, [$step, '?', '?'] if (scalar (@k) != scalar (@v)); # Cannot be compared
+          push @x, map { [$step, $k[$_], $v[$_]] } (0 .. $#k);
         }
     }
 
@@ -89,66 +72,49 @@ sub fields
   return @find;
 }
 
-sub diff
+# Compare the spectral norms of two job outputs; returns:
+#  {struct => 1}                      : norms cannot be compared (different
+#                                       steps, fields or number of prints)
+#  {diff => 0}                        : identical norms
+#  {diff => 1, step => s, digits => [...]} : s is the first step with a difference,
+#                                       digits the minimum number of common digits
+#                                       for each of fields ()
+
+sub compare
 {
   my ($f1, $f2) = @_;
 
-  my @fx1 = &xave ($f1);
-  my @fx2 = &xave ($f2);
+  my @x1 = &norms ($f1);
+  my @x2 = &norms ($f2);
 
-  my @x = ([]);
-  
-  my $diff = 0;
+  return {struct => 1} if (scalar (@x1) != scalar (@x2));
 
-  my %mind; # Minimum number of common digits
-  for (@find)
+  my %mind = map { ($_, $INF) } @find;
+  my $step;
+
+  for my $i (0 .. $#x1)
     {
-      $mind{$_} = $INF;
-    }
-  
-  while (defined (my $fx1 = shift (@fx1)) && defined (my $fx2 = shift (@fx2)))
-    {
-      my ($f1, $x1) = @$fx1;
-      my ($f2, $x2) = @$fx2;
-  
-      die ("Field mismatch $f1 != $f2\n")
-        unless ($f1 eq $f2);
-  
-      chomp ($x1); chomp ($x2);
+      my ($s1, $k1, $v1) = @{ $x1[$i] };
+      my ($s2, $k2, $v2) = @{ $x2[$i] };
 
-      if (($x1 !~ m/^\s*$/o) && ($x2 !~ m/^\s*$/o))
+      return {struct => 1} if (($s1 ne $s2) || ($k1 ne $k2) || ($k1 eq '?'));
+
+      for ($v1, $v2)
         {
-          for ($x1, $x2)
-            {
-              s/(\d)([+-]\d+)$/$1E$2/o;
-            }
-          my $dx = $x1 - $x2;
-  
-          my $sdx = sprintf ('%17.9e', $dx);
-  
-          $dx = $sdx; $dx = $dx + 0.;
-  
-          push @{$x[-1]},
-            sprintf (" | %-20s | %17.9e  |  %17.9e  |  %17s  | \n", $f1, $x1, $x2, $sdx);
-  
-          $diff++ if ($dx);
-
-          my $dd = &digitdiff ($x1, $x2);
-
-          if ($mind{$f1})
-            {
-              $mind{$f1} = $dd if ($dd < $mind{$f1});
-            }
+          s/(\d)([+-]\d+)$/$1E$2/o;
         }
-      else
-        {
-          push @x, [];
-        }
+
+      next if (sprintf ('%17.9e', $v1 - $v2) + 0. == 0.);
+
+      $step = $s1 unless (defined ($step));
+
+      $mind{$k1} = &digitdiff ($v1, $v2)
+        if (exists ($mind{$k1}) && (&digitdiff ($v1, $v2) < $mind{$k1}));
     }
 
-  my @mind = map { sprintf ('%5.2f', $mind{$_}) } @find;
+  return {diff => 0} unless (defined ($step));
 
-  return $diff ? (@mind) : ();
+  return {diff => 1, step => $step, digits => [map { sprintf ('%5.2f', $mind{$_}) } @find]};
 }
 
 1;

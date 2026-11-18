@@ -1,21 +1,9 @@
 
-# MITRAILLE PROFILE = small, TIME = 10
+# MITRAILLE PROFILE = small
+# MITRAILLE TIME    = 10
 
-# MITRAILLE COMMENT: Conf 001NHE sl2tl (cf. AROME); small resolution
+# MITRAILLE COMMENT = Conf 001NHE sl2tl (cf. AROME); small resolution
 
-CNMEXPL=L3_FCST_NHE_SL2_VFD_AROPHYSFEX_E29
-
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
-
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/MASTERODB
-
-CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
 #       **********************************
@@ -24,9 +12,6 @@ CNMEXPS="ARPE"
 
 echo " Get the namelist "
 
-VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
-echo $VERSION
-NAM_PATH=__nam_path__
 $CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
 
 $CP ${NAM_PATH}/${CNMEXPL}.selnam_fp_0 selectfp0
@@ -119,21 +104,10 @@ mpilaunch $MYOWNBIN
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file"
-    \cat $file
-  done
-fi
+shownode
 
 if [ -a OUTPUT_LISTING ]
 then
   echo " Expand file OUTPUT_LISTING "
   \cat OUTPUT_LISTING
 fi
-
-ls -l
-
-echo "@@ `date`"

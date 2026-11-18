@@ -1,5 +1,6 @@
 
-# MITRAILLE PROFILE = small, TIME = 30
+# MITRAILLE PROFILE = small
+# MITRAILLE TIME    = 30
 
 #============================================================
 #------------------------------------------------------------
@@ -8,21 +9,8 @@
 #------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: Make reduced Gaussian grids                                                                             
+# MITRAILLE COMMENT = Make reduced Gaussian grids
 
-CNMEXPL=GM_RGRI
-
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
-
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/MASTERODB
-
-CYCLE='__v_cycle__'
 
 NSMAX=1295
 NDGLG=1296
@@ -54,14 +42,7 @@ mpilaunch $MYOWNBIN
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file "
-    \cat $file
-  done
-fi
+shownode
 
 if [ -a fort.20 ]
 then
@@ -77,7 +58,3 @@ fi
 #      *  Save results                                      *
 #      ******************************************************
 #      None for this configuration
-
-ls -l
-
-echo "@@ `date`"

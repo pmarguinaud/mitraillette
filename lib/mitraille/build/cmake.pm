@@ -8,6 +8,8 @@ use strict;
 
 use base qw (mitraille::build);
 
+use mitraille::util qw (slurpl);
+
 sub getExecutablePath
 {
   my ($self, $exec) = @_;
@@ -75,10 +77,25 @@ sub getLabel
   return &basename ($self->{path});
 }
 
-sub getVersion
+# Cycle of the sources (eg 50): CMAKE_PROJECT_VERSION_MAJOR in CMakeCache.txt, or
+# the major number of VERSION.txt in the source directory
+
+sub getCycle
 {
   my $self = shift;
-  return undef;
+
+  my ($cache) = grep { -f } ("$self->{path}/CMakeCache.txt", "$self->{path}/build/CMakeCache.txt");
+  return unless ($cache);
+
+  my %cache = map { m/^(\w+):\w+=(.*)$/o ? ($1, $2) : () } &slurpl ($cache);
+
+  return $cache{CMAKE_PROJECT_VERSION_MAJOR} if ($cache{CMAKE_PROJECT_VERSION_MAJOR});
+
+  my $version = "$cache{CMAKE_HOME_DIRECTORY}/VERSION.txt";
+  return unless (-f $version);
+
+  my ($major) = ((&slurpl ($version))[0] =~ m/^(\d+)/o);
+  return $major;
 }
 
 1;

@@ -1,5 +1,6 @@
 
-# MITRAILLE PROFILE = tiny-manycore, TIME = 20
+# MITRAILLE PROFILE = tiny-manycore
+# MITRAILLE TIME    = 20
 
 #============================================================
 #------------------------------------------------------------
@@ -11,21 +12,8 @@
 #------------------------------------------------------------
 #============================================================
 
-# MITRAILLE COMMENT: Conf E923; make clim LELAM_LACE                                                                         
+# MITRAILLE COMMENT = Conf E923; make clim LELAM_LACE
 
-CNMEXPL=L3_C923_LELAM_LACE
-
-TEMPLATE=$CNMEXPL
-echo TEMPLATE=$TEMPLATE
-
-echo "@@ `date`"
-
-# Move on a workspace.
-cd $TMP_LOC
-
-MYOWNBIN=__my_own_pack__/bin/MASTERODB
-
-CYCLE='__v_cycle__'
 CNMEXPS="ARPE"
 
 DOMM='lelam_lace'
@@ -36,24 +24,7 @@ DOMM='lelam_lace'
 
 echo " Get the namelist "
 
-VERSION=`echo $CYCLE | tr [A-Z] [a-z]`
-echo $VERSION
-NAM_PATH=__nam_path__
-$CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
-
-$XPNAM --delta="
-&NAMPAR0
-  MBX_SIZE=$MBX_SIZE,
-  NPROC=$NPROC,
-  MP_TYPE=$MP_TYPE,
-  LOPT_SCALAR=$LOPT_SCALAR,
-/
-&NAMPAR1
-  NSTRIN=$NPROC,
-  NSTROUT=$NPROC,
-  NCOMBFLEN=$NCOMBFLEN,
-/
-" namprovi=${CNMEXPL}.nam
+getnam
 
 \cat < namprovi
 
@@ -156,14 +127,7 @@ codrep=$?
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file"
-    \cat $file
-  done
-fi
+shownode
 
 if [ $codrep -ne 0 ] ;then
   echo "  >>>>>>>>>failed: part 1 "
@@ -199,14 +163,7 @@ codrep=$?
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file"
-    \cat $file
-  done
-fi
+shownode
 
 if [ $codrep -ne 0 ] ;then
   echo "  >>>>>>>>>failed: part 2 "
@@ -235,14 +192,7 @@ codrep=$?
 ls -l
 
 
-if [ -a NODE.001_01 ]
-then
-  for file in NODE*
-  do
-    echo " Expand file $file"
-    \cat $file
-  done
-fi
+shownode
 
 if [ $codrep -ne 0 ] ;then
   echo "  >>>>>>>>>failed: part 3 "
@@ -296,14 +246,7 @@ for MM in 01 ; do
   ls -l
 
 
-  if [ -a NODE.001_01 ]
-  then
-    for file in NODE*
-    do
-      echo " Expand file $file"
-      \cat $file
-    done
-  fi
+  shownode
 
   if [ $codrep -ne 0 ] ;then
     echo "  >>>>>>>>>failed: part 4 "
@@ -326,14 +269,7 @@ for MM in 01 ; do
   ls -l
 
 
-  if [ -a NODE.001_01 ]
-  then
-    for file in NODE*
-    do
-      echo " Expand file $file"
-      \cat $file
-    done
-  fi
+  shownode
 
   if [ $codrep -ne 0 ] ;then
     echo "  >>>>>>>>>failed: part 5 "
@@ -364,14 +300,7 @@ for MM in 01 ; do
   ls -l
 
 
-  if [ -a NODE.001_01 ]
-  then
-    for file in NODE*
-    do
-      echo " Expand file $file"
-      \cat $file
-    done
-  fi
+  shownode
 
   if [ $codrep -ne 0 ] ;then
     echo "  >>>>>>>>>failed: part 6 "
@@ -394,14 +323,7 @@ for MM in 01 ; do
   ls -l
 
 
-  if [ -a NODE.001_01 ]
-  then
-    for file in NODE*
-    do
-      echo " Expand file $file"
-      \cat $file
-    done
-  fi
+  shownode
 
   if [ $codrep -ne 0 ] ;then
     echo "  >>>>>>>>>failed: part 8 "
@@ -426,14 +348,7 @@ for MM in 01 ; do
   ls -l
 
 
-  if [ -a NODE.001_01 ]
-  then
-    for file in NODE*
-    do
-      echo " Expand file $file"
-      \cat $file
-    done
-  fi
+  shownode
 
   if [ $codrep -ne 0 ] ;then
     echo "  >>>>>>>>>failed: part 9 "
@@ -445,7 +360,3 @@ for MM in 01 ; do
   \rm aero_GL
 
 done
-
-ls -l
-
-echo "@@ `date`"
