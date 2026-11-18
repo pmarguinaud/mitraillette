@@ -39,20 +39,6 @@ sub getCycle
     }
 }
 
-sub getVersion
-{
-  my $self = shift;
-  my $cycle = $self->getCycle ();
-
-  my %cycle2version =
-  (
-    '49t1' => 'CY49T1',
-    '50'   => 'CY50',
-  );
-
-  return $cycle2version{$cycle};
-}
-
 sub getInstallPath
 {
   my $self = shift;

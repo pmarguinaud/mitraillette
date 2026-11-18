@@ -180,8 +180,13 @@ if ($opts{reuse})
   }
 else
   {
-    die ("No version of tests was found\n") 
-      unless ($opts{version});
+    unless ($opts{version})
+      {
+        my $cycle = $build->getCycle ();
+        die ("Cannot choose the version of the tests" . (defined ($cycle) ? " for cycle $cycle" : '') 
+           . "; use --version (" . join (', ', map { m/PRO_FILE\.(\w+)$/o } <$ENV{MIT_INSTALL_DIR}/PRO_FILE.CY*>) . ")\n");
+      }
+    print "Version of the tests: $opts{version}\n";
     $mitraillette = &mitraille::createMitrailletteTestCase (build => $build, %opts);
   }
 
