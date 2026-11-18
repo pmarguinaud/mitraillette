@@ -1,0 +1,475 @@
+#!/usr/bin/perl -w
+
+=head1 NAME
+
+davimport
+
+=head1 SYNOPSIS
+
+  $ davimport --xp /scratch/work/marguina/dv-0409-belenos@marguina --dryrun
+  $ davimport --xp ... --version CY50T1 --select ARPEGE --exclude MINIM --dryrun
+
+=head1 DESCRIPTION
+
+Import the tasks of a Davai experiment, saved by davpack-dumper, as Mitraillette
+test cases (see davai-import.md). Only the report (--dryrun) is implemented for now:
+
+=over 4
+
+=item
+
+the test case of each task (DV_<tag>_<job>_<task>), and the tasks that are skipped
+because they failed;
+
+=item
+
+the files that are not data (binaries, lfi_* tools, core, ...), the absolute
+symlinks, and the absolute paths found in text files;
+
+=item
+
+the size of the data, before and after deduplication, and what the pool does not
+hold yet;
+
+=item
+
+the profile of each MPI layout, existing or to be created.
+
+=back
+
+=head1 OPTIONS
+
+=over 4
+
+=item --xp
+
+Directory of the saved tasks of the Davai experiment.
+
+=item --version
+
+Version of the tests (PRO_FILE.<version>); guessed from the pack of the tasks, as
+mitpack does.
+
+=item --tag
+
+Tag of the experiment in the test case names; default: the experiment number.
+
+=item --select, --exclude
+
+Perl regexes on the test case names.
+
+=item --keep
+
+Keep the test cases of the previous experiments in the PRO_FILE.
+
+=item --data-dir
+
+Directory of the Davai data; default: $INPUTFILES_HOME/davai of the station.
+
+=item --dryrun
+
+Report only.
+
+=item --no-hash
+
+Do not hash the files: the deduplication is by size only, and the report is faster
+but approximate.
+
+=back
+
+=cut
+
+use FindBin qw ($Bin);
+use lib "$Bin/../lib";
+
+use File::Find;
+use File::Basename;
+use File::Spec;
+use FileHandle;
+use Getopt::Long;
+use Digest::SHA;
+use JSON::PP;
+
+use strict;
+
+use mitraille::build;
+use mitraille::util qw (slurp slurpl);
+
+$ENV{MIT_INSTALL_DIR} ||= 'File::Spec'->rel2abs ("$Bin/..");
+$ENV{STATION} ||= 'meteofrance';
+
+my %opts;
+my @opts_f = qw (dryrun keep verbose help no-hash);
+my @opts_s = qw (xp version tag select exclude data-dir);
+
+sub help
+{
+  print "Usage: " . &basename ($0) . "\n"
+      . " Options:\n" . join ('', map { "   --$_\n" } @opts_f, map { "$_=..." } @opts_s);
+}
+
+&GetOptions
+(
+  (map { ($_, \$opts{$_}) } @opts_f),
+  (map { ("$_=s", \$opts{$_}) } @opts_s),
+);
+
+if ($opts{help})
+  {
+    &help ();
+    exit (0);
+  }
+
+die ("--xp is mandatory\n") unless ($opts{xp});
+die ("Only --dryrun is implemented\n") unless ($opts{dryrun});
+
+my $xp = 'File::Spec'->rel2abs ($opts{xp});
+$xp =~ s,/+$,,o;
+
+# Station directory, and Davai data
+
+my $station = $ENV{STATION} eq 'belenos' ? 'meteofrance' : $ENV{STATION};
+my $stationdir = "$ENV{MIT_INSTALL_DIR}/protojobs/$station";
+
+unless ($opts{'data-dir'})
+  {
+    my ($home) = map { m/^INPUTFILES_HOME=(\S+)/o ? ($1) : () } &slurpl ("$stationdir/site.sh");
+    die ("INPUTFILES_HOME is not set in $stationdir/site.sh\n") unless ($home);
+    $home =~ s,/+$,,o;
+    $opts{'data-dir'} = "$home/davai";
+  }
+
+my $datadir = $opts{'data-dir'};
+
+sub gb
+{
+  return sprintf ('%.1f GB', $_[0] / 1024 ** 3);
+}
+
+#------------------------------------------------------------------------------
+# B1. Tasks and test case names
+#------------------------------------------------------------------------------
+
+my @task;
+
+&find ({wanted => sub
+{
+  return unless ($_ eq 'task.json');
+  my $task = &decode_json (&slurp ($File::Find::name));
+  $task->{dir} = $File::Find::dir;
+  push @task, $task;
+}, no_chdir => 0}, $xp);
+
+die ("No task.json in $xp (was the experiment run with davpack --dumper?)\n") unless (@task);
+
+@task = sort { $a->{dir} cmp $b->{dir} } @task;
+
+my %experiment = map { ($_->{experiment}, 1) } @task;
+die ("Several experiments in $xp: " . join (', ', sort keys (%experiment)) . "\n")
+  if (keys (%experiment) > 1);
+my ($experiment) = keys (%experiment);
+
+# Tag: the experiment number, unless an experiment of another user already has it
+
+my $tag = $opts{tag};
+unless (defined ($tag))
+  {
+    ($tag) = ($experiment =~ m/^dv-(\d+)-/o);
+    die ("Cannot find the number of experiment $experiment; use --tag\n") unless (defined ($tag));
+  }
+$tag = uc ($tag);
+
+for my $d (<$datadir/dv-*>)
+  {
+    my $e = &basename ($d);
+    next if ($e eq $experiment);
+    my ($t) = ($e =~ m/^dv-(\d+)-/o);
+    die ("Tag $tag is already used by $e in $datadir; use --tag\n")
+      if (defined ($t) && ($t eq $tag) && ! $opts{tag});
+  }
+
+# Version of the tests
+
+my %pack = map { ($_->{pack} || '', 1) } @task;
+my $version = $opts{version};
+my $vnote = 'from --version';
+unless ($version)
+  {
+    die ("The tasks come from several packs; use --version\n") if (keys (%pack) > 1);
+    my ($pack) = keys (%pack);
+    my $build = $pack && 'mitraille::build'->new (path => $pack);
+    $version = $build && $build->getVersion ();
+    die ("Cannot guess the version of the tests from pack `$pack'; use --version\n") unless ($version);
+    $vnote = "guessed from $pack";
+  }
+
+sub testName
+{
+  my $task = shift;
+  (my $job = $task->{jobname}) =~ s/^(?:standalone|canonical)_//o;
+  (my $name = &basename ($task->{task})) =~ s/\.[^.]+\.x$//o;
+  $name = "DV_${tag}_${job}_${name}";
+  $name =~ s,[-./],_,go;
+  return uc ($name);
+}
+
+my (@skip, %name);
+
+for my $task (@task)
+  {
+    unless (defined ($task->{rc}) && ($task->{rc} == 0))
+      {
+        push @skip, $task;
+        next;
+      }
+    my $name = &testName ($task);
+    next if ($opts{select} && ($name !~ m/$opts{select}/));
+    next if ($opts{exclude} && ($name =~ m/$opts{exclude}/));
+    push @{ $name{$name} }, $task;
+  }
+
+my @collision = grep { @{ $name{$_} } > 1 } sort keys (%name);
+die ("Several tasks give the same test case:\n"
+   . join ('', map { my $n = $_; map { "  $n: $_->{dir}\n" } @{ $name{$n} } } @collision))
+  if (@collision);
+
+my %test = map { ($_, $name{$_}[0]) } keys (%name);
+
+#------------------------------------------------------------------------------
+# B2. What is not data, absolute symlinks and paths
+#------------------------------------------------------------------------------
+
+sub notData
+{
+  my ($f, $task) = @_;
+  my $b = &basename ($f);
+  my ($top) = split (m,/,o, $f);
+  return 1 if ($top =~ m/^(?:vortex_stacks_|dactions_staging_area_)/o);
+  return 1 if ($b =~ m/\.(?:tgz|tar)\.index$/o);
+  return 1 if (defined ($task->{binary}) && ($b eq $task->{binary}));
+  return 1 if ($b =~ m/\.X$/o);
+  return 1 if ($b =~ m/^lfi_/o);
+  return 1 if ($b =~ m/^vortex-stamp-/o);
+  return 1 if (grep { $b eq $_ } qw (core linux_bind.txt dirlst spawn_dump.sh));
+  return 0;
+}
+
+my (%drop, @abslink, %abspath, @file);
+
+for my $name (sort keys (%test))
+  {
+    my $task = $test{$name};
+    for my $part (qw (ro rw))
+      {
+        my $top = "$task->{dir}/$part";
+        next unless (-d $top);
+        &find ({wanted => sub
+        {
+          my $f = $File::Find::name;
+          my @st = lstat ($f) or return;
+          return if (-d _);
+          (my $rel = $f) =~ s,^\Q$top\E/,,;
+          if (&notData ($rel, $task))
+            {
+              my $k = &basename ($rel);
+              $k = $1 if ($rel =~ m,^((?:vortex_stacks_|dactions_staging_area_)[^/]*),o);
+              $k =~ s/^(lfi_|vortex-stamp-|vortex_stacks_|dactions_staging_area_).*/$1*/o;
+              $k =~ s/.*(\.(?:tgz|tar)\.index)$/*$1/o;
+              $drop{$k}++;
+              return;
+            }
+          if (-l _)
+            {
+              my $target = readlink ($f);
+              return unless ($target =~ m,^/,o);
+              push @abslink, [$name, "$part/$rel", $target];
+              @st = stat ($f) or return;
+            }
+          push @file, {test => $name, path => "$part/$rel", file => $f, dev => $st[0], ino => $st[1], size => $st[7]};
+
+          # Absolute paths in small text files
+
+          if (($part eq 'rw') && ($st[7] < 1024 * 1024) && (-T $f))
+            {
+              my $fh = 'FileHandle'->new ("<$f") or return;
+              while (my $line = <$fh>)
+                {
+                  while ($line =~ m,((?:/home|/scratch|/opt|/ec|/perm|/usr)/[\w./@+-]+),go)
+                    {
+                      my $p = $1;
+                      my $kind = index ($p, $task->{olddir}) == 0 ? 'task directory' : 'other';
+                      $abspath{"$name: $part/$rel: $p"} = $kind;
+                    }
+                }
+            }
+        }, no_chdir => 1}, $top);
+      }
+  }
+
+#------------------------------------------------------------------------------
+# B3. Size before and after deduplication
+#------------------------------------------------------------------------------
+
+my $apparent = 0;
+$apparent += $_->{size} for (@file);
+
+# One file per inode
+
+my %inode;
+for my $f (@file)
+  {
+    $inode{"$f->{dev}:$f->{ino}"} ||= $f;
+  }
+my @inode = values (%inode);
+my $ondisk = 0;
+$ondisk += $_->{size} for (@inode);
+
+# Pool index: size, sha1, path
+
+my (%poolsha, %poolsize);
+if (-f "$datadir/pool/INDEX")
+  {
+    for (&slurpl ("$datadir/pool/INDEX"))
+      {
+        my ($size, $sha) = split (m/\s+/o);
+        $poolsha{$sha} = 1;
+        $poolsize{$size} = 1;
+      }
+  }
+
+# Hash only the files that share their size with another file or a pool entry
+
+my %bysize;
+push @{ $bysize{$_->{size}} }, $_ for (@inode);
+
+my (%content, $hashed);
+for my $size (keys (%bysize))
+  {
+    my @f = @{ $bysize{$size} };
+    if (((@f == 1) && ! $poolsize{$size}) || $opts{'no-hash'})
+      {
+        $content{"size:$size"} = $f[0];
+        next;
+      }
+    for my $f (@f)
+      {
+        my $sha = 'Digest::SHA'->new (1);
+        $sha->addfile ($f->{file});
+        $f->{sha} = $sha->hexdigest ();
+        $hashed += $size;
+        $content{$f->{sha}} ||= $f;
+      }
+  }
+
+my ($distinct, $new) = (0, 0);
+for my $f (values (%content))
+  {
+    $distinct += $f->{size};
+    $new += $f->{size} unless ($f->{sha} && $poolsha{$f->{sha}});
+  }
+
+#------------------------------------------------------------------------------
+# C3. Profiles
+#------------------------------------------------------------------------------
+
+my @h;
+my %profile;
+{
+  my @line = &slurpl ("$stationdir/profil_table.csv");
+  my $h = shift (@line);
+  $h =~ s/;\s*$//o;
+  @h = split (m/\s*;\s*/o, $h);
+  for my $line (@line)
+    {
+      $line =~ s/;\s*$//o;
+      my @c = split (m/\s*;\s*/o, $line);
+      next unless (@c);
+      my %p = map { ($h[$_], $c[$_]) } (0 .. $#h);
+      $p{$_} += 0 for (grep { $_ ne 'job_name' } keys (%p));
+      $profile{$p{job_name}} = \%p;
+    }
+}
+
+my $machine = do "$stationdir/machine.conf";
+
+sub getProfile
+{
+  my $layout = shift;
+  my ($nn, $nnp, $omp) = map { $layout->{$_} || 1 } qw (nn nnp openmp);
+  for my $p (sort keys (%profile))
+    {
+      my $q = $profile{$p};
+      return ($p, 'existing')
+        if (($q->{nnode_fc} == $nn) && ($q->{ntask_fc} == $nnp) && ($q->{nopmp_fc} == $omp)
+         && ($q->{nnode_io} == 0));
+    }
+  my $partial = (($nn == 1) && ($nnp * $omp < $machine->{cores_per_node})) ? ', partial' : '';
+  return ("dv-${nn}x${nnp}x${omp}", "new$partial");
+}
+
+#------------------------------------------------------------------------------
+# Report
+#------------------------------------------------------------------------------
+
+print "Experiment : $experiment ($xp)\n";
+print "Tag        : $tag\n";
+print "Version    : $version ($vnote): namelist/" . lc ($version) . ", PRO_FILE.$version\n";
+print "Data       : $datadir/$experiment\n";
+print "\n";
+
+my %size;
+$size{$_->{test}} += $_->{size} for (@file);
+
+my $w = 0;
+for (keys (%test)) { $w = length ($_) if (length ($_) > $w) }
+
+printf ("%-${w}s  %-28s %-9s %-26s %6s %9s\n", 'Test case', 'Binary', 'Layout', 'Profile', 'Time', 'Data');
+my %layout;
+for my $name (sort keys (%test))
+  {
+    my $task = $test{$name};
+    my $layout = join ('x', map { $task->{layout}{$_} || 1 } qw (nn nnp openmp));
+    my ($p, $kind) = &getProfile ($task->{layout});
+    $layout{$layout} = "$p ($kind)";
+    my $bin = join (' ', $task->{binary} || '?', @{ $task->{args} || [] });
+    my @c = ($name, $bin, $layout, "$p ($kind)", $task->{elapsed} || 0, &gb ($size{$name} || 0));
+    printf ("%-${w}s  %-28s %-9s %-26s %5ds %9s\n", @c);
+  }
+print "\n" . scalar (keys (%test)) . " test cases\n";
+
+if (@skip)
+  {
+    print "\nSkipped tasks (failed, or no exit code):\n";
+    for my $task (@skip)
+      {
+        my $rc = defined ($task->{rc}) ? $task->{rc} : 'none';
+        printf ("  %-40s rc=%s\n", "$task->{jobname} / " . &basename ($task->{task}), $rc);
+      }
+  }
+
+print "\nProfiles:\n";
+printf ("  %-9s %s\n", $_, $layout{$_}) for (sort keys (%layout));
+
+print "\nNot data (removed):\n";
+printf ("  %-20s %d\n", $_, $drop{$_}) for (sort keys (%drop));
+
+if (@abslink)
+  {
+    my %t;
+    $t{$_->[2] =~ m,^(/[^/]+/[^/]+),o ? $1 : $_->[2]}++ for (@abslink);
+    print "\nAbsolute symlinks (replaced by the file): " . scalar (@abslink) . ", to:\n";
+    printf ("  %-30s %d\n", $_, $t{$_}) for (sort keys (%t));
+  }
+
+if (%abspath)
+  {
+    print "\nAbsolute paths in text files of rw/:\n";
+    print "  $_ ($abspath{$_})\n" for (sort keys (%abspath));
+  }
+
+print "\nData:\n";
+printf ("  %-36s %8d files  %10s\n", 'as seen', scalar (@file), &gb ($apparent));
+printf ("  %-36s %8d files  %10s\n", 'distinct inodes', scalar (@inode), &gb ($ondisk));
+printf ("  %-36s %8d files  %10s\n", 'distinct contents', scalar (keys (%content)), &gb ($distinct));
+printf ("  %-36s %8s        %10s\n", 'not in the pool yet', '', &gb ($new));
+printf ("  %-36s %8s        %10s\n", 'hashed', '', &gb ($hashed || 0));
