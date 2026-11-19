@@ -227,20 +227,25 @@ my @STATUS =
   [qr/Cannot access ..\/(?:MASTERODB|ARPEXE)./s,                                'Missing',          $FAIL],
 );
 
-my $STATUS_RE = join ('|', map { "($_->[0])" } @STATUS);
-$STATUS_RE = qr/$STATUS_RE/;
-
 my %COLOR = ((map { ($_->[1], $_->[2]) } @STATUS), COMPLETED => 'green', UNKNOWN => 'yellow');
+
+# Each message is searched separately: a single alternation of all of them is
+# about 50 times slower on large outputs, because it disables the fast substring
+# search of the regex engine
 
 sub jobStatus
 {
   my $text = shift;
 
-  if ($text =~ $STATUS_RE)
+  my ($status, $pos);
+
+  for my $s (@STATUS)
     {
-      my ($i) = grep { defined ($-[$_+1]) } (0 .. $#STATUS);
-      return $STATUS[$i][1];
+      next unless ($text =~ $s->[0]);
+      ($status, $pos) = ($s->[1], $-[0]) if ((! defined ($pos)) || ($-[0] < $pos));
     }
+
+  return $status if (defined ($status));
 
   return $text =~ m/COMPLETED/o ? 'COMPLETED' : 'UNKNOWN';
 }
