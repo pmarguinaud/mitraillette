@@ -218,7 +218,7 @@ my @STATUS =
   [qr/mpirun detected that one or more processes exited with non-zero status/,  'non-zero status',  $FAIL],
   [qr/ABOR1/,                                                                   'ABOR1',            $FAIL],
   [qr/ABORT!/,                                                                  'ABORT!',           $FAIL],
-  [qr/FAILED/,                                                                  'FAILED',           $FAIL],
+  [qr/FAILED at line/,                                                          'FAILED',           $FAIL],
   [qr/SIGSEGV/,                                                                 'SIGSEGV',          $FAIL],
   [qr/CANCELLED/,                                                               'CANCELLED',        $FAIL],
   [qr/forrtl: severe/,                                                          'forrtl: severe',   $FAIL],
@@ -254,6 +254,10 @@ sub jobInfo
 {
   my $o = shift;
   my %args = @_;
+
+  # Listing of Davai: the task succeeded, or it would not have been imported
+
+  return {status => 'COMPLETED', CNMEXPL => $1} if ($o =~ m,/([^/]+)/ref/NODE\.001_01$,o);
 
   my $text = &slurp ($o);
 
@@ -324,6 +328,10 @@ sub getReferenceMitraillette
         {
           $mitraillette1 = $reference;
         }
+      elsif (&isDavaiData ($reference))
+        {
+          $mitraillette1 = $reference;
+        }
       else
         {
           die;
@@ -333,9 +341,24 @@ sub getReferenceMitraillette
   return $mitraillette1;
 }
 
+# Data of a Davai experiment imported by davimport: <test>/ref/NODE.001_01 are
+# the listings of Davai, and are used as the outputs of a reference
+
+sub isDavaiData
+{
+  my $dir = shift;
+  my @node = <$dir/*/ref/NODE.001_01>;
+  return (-f "$dir/TAG") && @node;
+}
+
 sub getStatusOutputs
 {
   my $mitraillette = shift;
+
+  if ($mitraillette && &isDavaiData ($mitraillette))
+    {
+      return map { m,/([^/]+)/ref/NODE\.001_01$,o ? ("O$1", $_) : () } <$mitraillette/*/ref/NODE.001_01>;
+    }
 
   my %o = $mitraillette ? map 
   { 

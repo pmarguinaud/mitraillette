@@ -32,6 +32,7 @@ module purge
 # variables for perfect reproductibilty for some oper conf.
 export MKL_CBWR=AUTO,STRICT
 export MKL_DEBUG_CPU_TYPE=5
+export MKL_NUM_THREADS=1
 
 export OMP_STACKSIZE=4G
 export KMP_STACKSIZE=4G

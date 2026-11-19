@@ -1,0 +1,174 @@
+{
+    "expver": "OOPS",
+    "resolution": {
+        "namelist": "naml_geometry",
+        "orogfile": "ICMSHOOPSINIT"
+    },
+    "model": {
+        "namelist": "hr_model.nam",
+        "tstep": "PT1800S"
+    },
+    "cost_function": {
+        "window_length": "PT6H",
+        "window_begin": "2022-01-21T03:00:00Z",
+        "variables": [
+            "u",
+            "v",
+            "t",
+            "q",
+            "sp"
+        ],
+        "cost_type": "4D-Var-MF",
+        "Jb": {
+            "Background": {
+                "state": [
+                    {
+                        "date": "2022-01-21T03:00:00Z",
+                        "ifile": "0",
+                        "term": "PT0H",
+                        "variables": [],
+                        "expver": "OOPS"
+                    }
+                ]
+            },
+            "Covariance": {
+                "covariance": "static",
+                "date": "2022-01-21T06:00:00Z",
+                "namelist": "bmatrix.nam"
+            }
+        },
+        "Jo": {
+            "screening": "true",
+            "timeslot": "PT1H",
+            "ObsTypes": [
+                {
+                    "naml_obs_setup": "observations.nam",
+                    "odb_name": "ECMA",
+                    "ObsType": "ALLOBS",
+                    "ObsData": {
+                        "obsvalue": "obsvalue"
+                    },
+                    "Covariance": {
+                        "ObsErrorCovariance": {
+                            "covariance": "AllObsError",
+                            "obserror": "obserror"
+                        }
+                    },
+                    "covarianceObsAux": [
+                        {
+                            "type": "VARBC",
+                            "filename": "VARBC.iter1.new",
+                            "namelist": "fort.4"
+                        },
+                        {
+                            "type": "TOVSCV"
+                        }
+                    ],
+                    "stateObsAux": [
+                        {
+                            "type": "VARBC",
+                            "filename": "VARBC.cycle",
+                            "namelist": "fort.4"
+                        },
+                        {
+                            "type": "TOVSCV"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Jc": []
+    },
+    "variational": {
+        "iteration": [
+            {
+                "iteration": "0",
+                "skipFinalTraj": "true",
+                "screening": {
+                    "active": "true",
+                    "departures": {
+                        "obsvalue": "fg_depar@body",
+                        "biasvalue": "biascorr@body"
+                    }
+                },
+                "resolution": {
+                    "namelist": "naml_t63",
+                    "orogfile": "const.t63.000",
+                    "is_alternative": "true"
+                },
+                "timeslot": "PT1H",
+                "explicitChangeResolution": "true",
+                "low_resolution_model": {
+                    "namelist": "nonlinear_model_upd1.nam",
+                    "tstep": "PT1800S"
+                },
+                "linearmodel": {
+                    "version": "IfsTLM",
+                    "namelist": "linear_model_upd1.nam",
+                    "tstep": "PT1800S",
+                    "frequency": "PT1800S",
+                    "trajectory": {
+                        "namelist": "traj_model_upd1.nam",
+                        "tstep": "PT1800S"
+                    }
+                },
+                "ninner": "0",
+                "gradient_norm_reduction": "0.001",
+                "diagnostics": {
+                    "departures": {
+                        "obsvalue": "fg_depar@body"
+                    },
+                    "residue": {
+                        "obsvalue": "lores@update_1"
+                    }
+                },
+                "statesObsAux": [
+                    {
+                        "stateObsAux": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.iter1.new",
+                                "namelist": "fort.4"
+                            }
+                        ]
+                    }
+                ],
+                "statesObsAuxReset": [
+                    {
+                        "stateObsAuxReset": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.iter1.new",
+                                "namelist": "fort.4"
+                            },
+                            {
+                                "type": "TOVSCV"
+                            }
+                        ]
+                    }
+                ],
+                "covariancesObsAux": [
+                    {
+                        "covarianceObsAux": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.iter1.new",
+                                "namelist": "fort.4",
+                                "update": "true"
+                            },
+                            {
+                                "type": "TOVSCV",
+                                "update": "false"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "minimizer": {
+        "algorithm": "SQRTPLanczos",
+        "classic_change_of_variables": "true",
+        "minimizations": "0"
+    }
+}

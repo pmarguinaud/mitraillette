@@ -108,6 +108,8 @@ FILE_PATH_DBASE6=${INPUTFILES_HOME}/const/923N/CLIM_G/version2/i3e
 FILE_PATH_DBASE8=${INPUTFILES_HOME}/const/923N/CLIM_G/ozone/ascii
 FILE_PATH_DBASE9=${INPUTFILES_HOME}/const/923N/CLIM_G/aerosols/ascii
 FILE_PATH_IFS=${INPUTFILES_HOME}/ifs-tco399
+# - for the test cases imported from Davai (davimport)
+FILE_PATH_DAVAI=${INPUTFILES_HOME}/davai
 # - for scientific tests
 FILE_PATH_EXPS=${INPUTFILES_WORKDIR}
 
@@ -198,6 +200,9 @@ XPNAM=xpnam
 # the io_serv tools need LFITOOLS
 export LFITOOLS=$EXEC_IFSAUX_LFITOOLS
 
+# a namelist group missing from a namelist file is not an error
+export POSNAMEF_DEFAULT_FATAL=0
+
 EOF
 
 # Beginning of the test case, before the pjob
@@ -244,6 +249,80 @@ function getnam
 {
   $CP ${NAM_PATH}/${CNMEXPL}.nam ${CNMEXPL}.nam
   setnampar "$@"
+}
+
+# Install the data of a test case imported from Davai (davimport): ro/ is
+# linked, rw/ is copied and made writable; then copy the namelists of the test case other than
+# fort.4 ($NAM_PATH/$CNMEXPL.<file>), without the prefix. Symlinks that do not
+# resolve in the data (eg iasichannels -> namchannels_iasi314, a namelist) are
+# copied as they are, and resolve in the current directory
+
+function getdavai
+{
+  local dir=$FILE_PATH_DAVAI/$1/$CNMEXPL
+  local part f
+  for part in ro rw
+  do
+    if [ ! -d $dir/$part ]
+    then
+      continue
+    fi
+    for f in $(cd $dir/$part && find . -mindepth 1 -type d)
+    do
+      mkdir -p $f
+    done
+    for f in $(cd $dir/$part && find . ! -type d)
+    do
+      if [ ! -e $dir/$part/$f ]
+      then
+        /bin/cp -P $dir/$part/$f $f
+      elif [ $part = ro ]
+      then
+        ln -sf $(readlink -f $dir/$part/$f) $f
+      else
+        /bin/cp -L $dir/$part/$f $f
+        chmod u+w $f
+      fi
+    done
+  done
+  for f in ${NAM_PATH}/${CNMEXPL}.*
+  do
+    if [ "$f" != "${NAM_PATH}/${CNMEXPL}.nam" ]
+    then
+      $CP $f ${f#${NAM_PATH}/${CNMEXPL}.}
+    fi
+  done
+}
+
+# seteccodes [--pwd] BINARY SAMPLES: set ECCODES_DEFINITION_PATH and
+# ECCODES_SAMPLES_PATH for the ecCodes in the RPATH (or RUNPATH) of BINARY;
+# --pwd puts the current directory first in the definition path
+
+function seteccodes
+{
+  local pwd=""
+  if [ "x$1" = "x--pwd" ]
+  then
+    pwd="$PWD:"
+    shift
+  fi
+  local d lib=""
+  for d in $(readelf -d $1 | sed -n 's/.*(\(RPATH\|RUNPATH\)).*\[\(.*\)\]/\2/p' | tr ':' ' ')
+  do
+    if [ -f $d/libeccodes.so ]
+    then
+      lib=$d
+      break
+    fi
+  done
+  if [ "x$lib" = "x" ]
+  then
+    echo "seteccodes: no libeccodes.so in the RPATH of $1" 1>&2
+    exit 1
+  fi
+  local prefix=$(dirname $lib)
+  export ECCODES_DEFINITION_PATH=$pwd$prefix/share/eccodes/definitions
+  export ECCODES_SAMPLES_PATH=$prefix/share/eccodes/$2
 }
 
 # Print the listings of the MPI tasks

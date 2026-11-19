@@ -1,0 +1,26 @@
+ &NAMRGRI
+ /
+ &NAMDIM
+   NPROMA=-50,
+ /
+ &NAMCVER
+ /
+ &NAMGEM
+ /
+ &NAMVV0
+ /
+ &NAMVV1
+ /
+ &NAMTRANS
+ /
+ &NAMTRANS0
+ /
+ &NAMSTA
+ /
+ &NEMDIM
+ /
+ &NEMGEO
+ /
+ &NEMDYN
+ /
+

@@ -83,8 +83,11 @@ use FindBin qw ($Bin);
 use lib "$Bin/../lib";
 
 use File::Find;
+use File::Path;
+use File::Copy;
 use File::Basename;
 use File::Spec;
+use Cwd;
 use FileHandle;
 use Getopt::Long;
 use Digest::SHA;
@@ -93,9 +96,9 @@ use JSON::PP;
 use strict;
 
 use mitraille::build;
-use mitraille::util qw (slurp slurpl);
+use mitraille::util qw (slurp slurpl spew);
 
-$ENV{MIT_INSTALL_DIR} ||= 'File::Spec'->rel2abs ("$Bin/..");
+$ENV{MIT_INSTALL_DIR} ||= &Cwd::abs_path ("$Bin/..");
 $ENV{STATION} ||= 'meteofrance';
 
 my %opts;
@@ -121,7 +124,6 @@ if ($opts{help})
   }
 
 die ("--xp is mandatory\n") unless ($opts{xp});
-die ("Only --dryrun is implemented\n") unless ($opts{dryrun});
 
 my $xp = 'File::Spec'->rel2abs ($opts{xp});
 $xp =~ s,/+$,,o;
@@ -179,13 +181,15 @@ unless (defined ($tag))
   }
 $tag = uc ($tag);
 
+# Tag of an imported experiment: its TAG file
+
 for my $d (<$datadir/dv-*>)
   {
     my $e = &basename ($d);
     next if ($e eq $experiment);
-    my ($t) = ($e =~ m/^dv-(\d+)-/o);
-    die ("Tag $tag is already used by $e in $datadir; use --tag\n")
-      if (defined ($t) && ($t eq $tag) && ! $opts{tag});
+    next unless (-f "$d/TAG");
+    chomp (my $t = &slurp ("$d/TAG"));
+    die ("Tag $tag is already used by $e in $datadir; use --tag\n") if ($t eq $tag);
   }
 
 # Version of the tests
@@ -392,19 +396,35 @@ my %profile;
 
 my $machine = do "$stationdir/machine.conf";
 
+# Davai runs most tasks on whole nodes (--exclusive), whatever their size; a
+# task gets a partial node profile only if Davai ran it in the shared partition,
+# since the memory of a partial node job is limited (see sbatch.partial)
+
+sub isShared
+{
+  my $task = shift;
+  my @sbatch = @{ $task->{sbatch} || [] };
+  for my $i (0 .. $#sbatch)
+    {
+      return 1 if ($sbatch[$i] =~ m/^--partition=shared$/o);
+      return 1 if (($sbatch[$i] =~ m/^-p$|^--partition$/o) && (($sbatch[$i+1] || '') eq 'shared'));
+    }
+  return 0;
+}
+
 sub getProfile
 {
-  my $layout = shift;
-  my ($nn, $nnp, $omp) = map { $layout->{$_} || 1 } qw (nn nnp openmp);
+  my $task = shift;
+  my ($nn, $nnp, $omp) = map { $task->{layout}{$_} || 1 } qw (nn nnp openmp);
+  my $partial = (($nn == 1) && ($nnp * $omp < $machine->{cores_per_node}) && &isShared ($task)) ? 1 : 0;
   for my $p (sort keys (%profile))
     {
       my $q = $profile{$p};
       return ($p, 'existing')
         if (($q->{nnode_fc} == $nn) && ($q->{ntask_fc} == $nnp) && ($q->{nopmp_fc} == $omp)
-         && ($q->{nnode_io} == 0));
+         && ($q->{nnode_io} == 0) && (($q->{partial} || 0) == $partial));
     }
-  my $partial = (($nn == 1) && ($nnp * $omp < $machine->{cores_per_node})) ? ', partial' : '';
-  return ("dv-${nn}x${nnp}x${omp}", "new$partial");
+  return ("dv-${nn}x${nnp}x${omp}" . ($partial ? '-shared' : ''), 'new' . ($partial ? ', partial' : ''));
 }
 
 #------------------------------------------------------------------------------
@@ -429,7 +449,7 @@ for my $name (sort keys (%test))
   {
     my $task = $test{$name};
     my $layout = join ('x', map { $task->{layout}{$_} || 1 } qw (nn nnp openmp));
-    my ($p, $kind) = &getProfile ($task->{layout});
+    my ($p, $kind) = &getProfile ($task);
     $layout{$layout} = "$p ($kind)";
     my $bin = join (' ', $task->{binary} || '?', @{ $task->{args} || [] });
     my @c = ($name, $bin, $layout, "$p ($kind)", $task->{elapsed} || 0, &gb ($size{$name} || 0));
@@ -473,3 +493,362 @@ printf ("  %-36s %8d files  %10s\n", 'distinct inodes', scalar (@inode), &gb ($o
 printf ("  %-36s %8d files  %10s\n", 'distinct contents', scalar (keys (%content)), &gb ($distinct));
 printf ("  %-36s %8s        %10s\n", 'not in the pool yet', '', &gb ($new));
 printf ("  %-36s %8s        %10s\n", 'hashed', '', &gb ($hashed || 0));
+
+exit (0) if ($opts{dryrun});
+
+#------------------------------------------------------------------------------
+# Import
+#------------------------------------------------------------------------------
+
+my $cycle_lc = lc ($version);
+my $namdir = "$ENV{MIT_INSTALL_DIR}/namelist/$cycle_lc";
+my $jobdir = "$ENV{MIT_INSTALL_DIR}/protojobs";
+my $xpdir = "$datadir/$experiment";
+
+-d $namdir or die ("No namelist directory $namdir\n");
+
+&mkpath (["$datadir/pool", $xpdir]);
+&spew ("$xpdir/TAG", "$tag\n");
+
+# Binaries of the pack for the binaries of Davai
+
+my %davai2pack =
+(
+  ALARO          => 'MASTERODB',
+  AROME          => 'MASTERODB',
+  ARPEGE         => 'MASTERODB',
+  HARMONIEAROME  => 'MASTERODB',
+  IFS            => 'MASTERODB',
+  OOTESTVAR      => 'OOTESTVAR',
+  OOVAR          => 'OOVAR',
+);
+
+# Shell quoting; occurrences of $dir become the unquoted expression $expr
+
+sub shquote
+{
+  my $s = shift;
+  return $s if ($s =~ m{^[\w/.,:=+@%-]+$}o);
+  $s =~ s/'/'\\''/go;
+  return "'$s'";
+}
+
+sub shquoteSubst
+{
+  my ($s, $dir, $expr) = @_;
+  my @part = split (m/\Q$dir\E(?=\/|:|$)/, $s, -1);
+  return &shquote ($s) if (@part == 1);
+  return join ($expr, map { length ($_) ? &shquote ($_) : '' } @part);
+}
+
+# Pool: one copy of each content, in pool/<name>/<sha1 prefix>; INDEX holds
+# size, sha1 and path of each entry
+
+my %pool;
+if (-f "$datadir/pool/INDEX")
+  {
+    for (&slurpl ("$datadir/pool/INDEX"))
+      {
+        my ($size, $sha, $path) = split (m/\s+/o);
+        $pool{$sha} = $path;
+      }
+  }
+
+my $indexfh = 'FileHandle'->new (">>$datadir/pool/INDEX") or die ("Cannot write $datadir/pool/INDEX\n");
+$indexfh->autoflush (1);
+
+my (%shaOfInode, $added, $nadded);
+
+sub poolAdd
+{
+  my $f = shift;
+
+  my @st = stat ($f) or die ("Cannot stat $f\n");
+  my $sha = $shaOfInode{"$st[0]:$st[1]"};
+  unless ($sha)
+    {
+      my $d = 'Digest::SHA'->new (1);
+      $d->addfile ($f);
+      $sha = $shaOfInode{"$st[0]:$st[1]"} = $d->hexdigest ();
+    }
+
+  return "$datadir/$pool{$sha}" if ($pool{$sha});
+
+  my $path = 'pool/' . &basename ($f) . '/' . substr ($sha, 0, 12);
+  my $g = "$datadir/$path";
+  &mkpath (&dirname ($g));
+
+  # A hard link keeps the data when the saved task is removed; its mode is
+  # left alone, since it is also the mode of the saved task
+
+  unless (link ($f, $g))
+    {
+      &copy ($f, $g) or die ("Cannot copy $f to $g: $!\n");
+    }
+
+  $indexfh->print ("$st[7] $sha $path\n");
+  $pool{$sha} = $path;
+  $added += $st[7];
+  $nadded++;
+
+  return $g;
+}
+
+# Small text files of rw/ that are namelists or similar inputs: they go with
+# the namelists of the test case, not with the data
+
+sub isNamelist
+{
+  my $f = shift;
+  my $b = &basename ($f);
+  return 0 if (-l $f);
+  return 0 unless ((-f $f) && (-s $f < 1024 * 1024) && (-T $f));
+  return 1 if ($b =~ m/\.json$/o);
+  return 1 if ($b =~ m/^xxt/o);
+  my $fh = 'FileHandle'->new ("<$f") or return 0;
+  while (<$fh>)
+    {
+      return 1 if (m/^\s*&[A-Za-z]\w*/o);
+    }
+  return 0;
+}
+
+# Variables of site.sh: exported with the same value, they are not repeated
+
+my %site = map { m/^\s*export\s+(\w+)=(.*?)\s*$/o ? ($1, $2) : () } &slurpl ("$stationdir/site.sh");
+
+# Variables not exported by the pjob: set by seteccodes, by the station, or for
+# all jobs (POSNAMEF_DEFAULT_FATAL, in generate.pm); about files that are not
+# imported; tuning of the runtime libraries (davpack-dumper no longer records
+# them, but older experiments have them)
+
+my %noexport = map { ($_, 1) } qw (LD_LIBRARY_PATH ECCODES_DEFINITION_PATH ECCODES_SAMPLES_PATH BUFR_TABLES
+                                   EC_LINUX_BIND FORT_BLOCKSIZE FORT_BUFFERED MALLOC_MMAP_MAX_
+                                   MALLOC_TRIM_THRESHOLD_ MPISEPSELECT STACKMULT
+                                   TBB_MALLOC_USE_HUGE_PAGES UCX_IB_PCI_RELAXED_ORDERING decfort_dump_flag
+                                   POSNAMEF_DEFAULT_FATAL);
+
+# ecCodes prefix in the RPATH (or RUNPATH) of a binary
+
+sub eccodesPrefix
+{
+  my $bin = shift;
+  my ($rpath) = map { m/\((?:RPATH|RUNPATH)\).*\[(.*)\]/o ? ($1) : () } `readelf -d $bin 2>/dev/null`;
+  return unless ($rpath);
+  for my $d (split (m/:/o, $rpath))
+    {
+      return &dirname ($d) if (-f "$d/libeccodes.so");
+    }
+  return;
+}
+
+my %profileNew;
+
+sub importTest
+{
+  my ($name, $task) = @_;
+
+  my $olddir = $task->{olddir};
+  my $tdir = "$xpdir/$name";
+
+  &rmtree ($tdir);
+  &mkpath ($tdir);
+
+  # Namelists of the test case
+
+  unlink ($_) for (<$namdir/$name.*>);
+
+  &copy ("$task->{dir}/rw/fort.4", "$namdir/$name.nam") or die ("Cannot copy fort.4 of $task->{dir}\n");
+
+  my @nam;
+  for my $f (glob ("$task->{dir}/rw/*"))
+    {
+      my $b = &basename ($f);
+      next if ($b eq 'fort.4');
+      next if (&notData ($b, $task));
+      next unless (&isNamelist ($f));
+      &copy ($f, "$namdir/$name.$b") or die ("Cannot copy $f\n");
+      push @nam, $b;
+    }
+  my %nam = map { ($_, 1) } @nam, 'fort.4';
+
+  # Data: relative symlinks to the pool
+
+  for my $part (qw (ro rw))
+    {
+      my $top = "$task->{dir}/$part";
+      next unless (-d $top);
+      &find ({wanted => sub
+      {
+        my $f = $File::Find::name;
+        return if ($f eq $top);
+        (my $rel = $f) =~ s,^\Q$top\E/,,;
+        if (&notData ($rel, $task) || (($part eq 'rw') && $nam{$rel}))
+          {
+            $File::Find::prune = 1 if (-d $f);
+            return;
+          }
+        my $g = "$tdir/$part/$rel";
+        if ((-d $f) && ! (-l $f))
+          {
+            &mkpath ($g);
+            return;
+          }
+        &mkpath (&dirname ($g));
+        if ((-l $f) && (readlink ($f) !~ m,^/,o))
+          {
+            # Relative symlinks are kept
+            symlink (readlink ($f), $g) or die ("Cannot create $g\n");
+            return;
+          }
+        return unless (-f $f);
+        my $p = &poolAdd ($f);
+        symlink ('File::Spec'->abs2rel ($p, &dirname ($g)), $g) or die ("Cannot create $g\n");
+      }, no_chdir => 1}, $top);
+    }
+
+  # Davai's listings, and the description of the task
+
+  for my $f (glob ("$task->{dir}/ref/NODE.*"))
+    {
+      &mkpath ("$tdir/ref");
+      &copy ($f, "$tdir/ref/" . &basename ($f));
+    }
+
+  my %t = %$task;
+  delete $t{$_} for (qw (env dir));
+  &spew ("$tdir/task.json", 'JSON::PP'->new ()->pretty ()->canonical ()->encode (\%t));
+
+  # Environment
+
+  my %env = %{ $task->{env} || {} };
+
+  my $davai = &basename ($task->{binary}, '.X');
+  my $bin = $davai2pack{$davai} or die ("$name: no binary of the pack for $task->{binary}\n");
+
+  my @seteccodes;
+  if (my $def = $env{ECCODES_DEFINITION_PATH})
+    {
+      my $samples = $env{ECCODES_SAMPLES_PATH} || '';
+      $samples =~ s,^.*/share/eccodes/,,o;
+      push @seteccodes, '--pwd' if (index ($def, "$olddir:") == 0);
+      push @seteccodes, '$MYOWNBIN', $samples || 'ifs_samples/grib1_mlgrib2';
+
+      # The ecCodes of Davai must be the one of the binary
+      my ($prefix) = ($def =~ m,(?:^|:)([^:]*)/share/eccodes/definitions$,o);
+      my $pprefix = $task->{pack} && &eccodesPrefix ("$task->{pack}/bin/$bin");
+      print "WARNING: $name: ecCodes of Davai ($prefix) is not the one of $bin ("
+          . ($pprefix || 'none') . ")\n"
+        if ($prefix && $pprefix && ($prefix ne $pprefix));
+    }
+
+  my @export;
+  for my $var (sort keys (%env))
+    {
+      next if ($noexport{$var});
+      my $value = &shquoteSubst ($env{$var}, $olddir, '"$PWD"');
+      next if (defined ($site{$var}) && ($site{$var} eq $value));
+      push @export, "export $var=$value";
+    }
+
+  # Profile and time
+
+  my ($nn, $nnp, $omp) = map { $task->{layout}{$_} || 1 } qw (nn nnp openmp);
+  my ($profile, $kind) = &getProfile ($task);
+  $profileNew{$profile} = [$nn, $nnp, $omp, $kind =~ m/partial/o ? 1 : 0] if ($kind =~ m/^new/o);
+
+  my $time = int ((3 * ($task->{elapsed} || 0) + 59) / 60);
+  $time = 10 if ($time < 10);
+
+  # Pjob
+
+  my @args = map { &shquote ($_) } @{ $task->{args} || [] };
+
+  my $comment = "Davai $task->{jobname} / " . &basename ($task->{task}) . " ($experiment)";
+  $comment .= "; needs BUFR_TABLES" if ($env{BUFR_TABLES});
+
+  my $pjob = << "PJOB";
+
+# MITRAILLE PROFILE = $profile
+# MITRAILLE TIME    = $time
+# MITRAILLE COMMENT = $comment
+
+# Generated by davimport from $task->{dir}
+
+MYOWNBIN=\$BINDIR/$bin
+
+# Input data, and the namelists other than fort.4
+
+getdavai $experiment
+
+# Namelist, with the parallel distribution of the profile and the settings of the station
+
+getnam
+
+\\cat < namprovi
+
+\$CP namprovi fort.4
+
+PJOB
+
+  $pjob .= "seteccodes @seteccodes\n\n" if (@seteccodes);
+  $pjob .= join ('', map { "$_\n" } @export) . "\n" if (@export);
+  $pjob .= "mpilaunch " . join (' ', '$MYOWNBIN', @args) . "\n\nshownode\n";
+
+  &spew ("$jobdir/$name.pjob", $pjob);
+
+  print "Imported $name: " . scalar (@nam) . " namelists besides fort.4, profile $profile, $time minutes\n";
+}
+
+for my $name (sort keys (%test))
+  {
+    &importTest ($name, $test{$name});
+  }
+
+$indexfh->close ();
+
+# New profiles, for all stations
+
+for my $profil_table (<$jobdir/*/profil_table.csv>)
+  {
+    my %has = map { m/^\s*([^;\s]+)\s*;/o ? ($1, 1) : () } &slurpl ($profil_table);
+    my @p = grep { ! $has{$_} } sort keys (%profileNew);
+    next unless (@p);
+    my $fh = 'FileHandle'->new (">>$profil_table") or die ("Cannot write $profil_table\n");
+    for my $p (@p)
+      {
+        my ($nn, $nnp, $omp, $partial) = @{ $profileNew{$p} };
+        $fh->printf ("%-60s;%10d;%10d;%10d;%10d;%10d;%10d;%10d;\n", $p, $nn, $nnp, $omp, 0, 0, 0, $partial);
+      }
+    $fh->close ();
+    print "Added to $profil_table: @p\n";
+  }
+
+# PRO_FILE: one block per experiment; without --keep, the blocks of the other
+# experiments are removed
+
+my $pro_file = "$ENV{MIT_INSTALL_DIR}/PRO_FILE.$version";
+{
+  my (@out, $in, @removed);
+  for my $line (&slurpl ($pro_file))
+    {
+      $in = $1 if ($line =~ m/^#\s*davimport\s+begin\s+(\S+)/o);
+      my $end = $line =~ m/^#\s*davimport\s+end\s+/o;
+      if ($in && (($in eq $experiment) || ! $opts{keep}))
+        {
+          push @removed, $line if (($in ne $experiment) && ($line !~ m/^#/o));
+        }
+      else
+        {
+          push @out, $line;
+        }
+      $in = undef if ($end);
+    }
+  pop (@out) while (@out && ($out[-1] =~ m/^\s*$/o));
+  push @out, '', "# davimport begin $experiment", (sort keys (%test)), "# davimport end $experiment";
+  &spew ($pro_file, join ('', map { "$_\n" } @out));
+  print "Removed from $pro_file: @removed\n" if (@removed);
+  print "Updated $pro_file\n";
+}
+
+printf ("Pool: %d files added, %s\n", $nadded || 0, &gb ($added || 0));

@@ -1,0 +1,294 @@
+{
+    "expver": "OOPS",
+    "resolution": {
+        "namelist": "naml_standard_geometry",
+        "orogfile": "ICMSHOOPSINIT"
+    },
+    "model": {
+        "namelist": "naml_nonlinear_model_3dv_aro",
+        "tstep": "PT2H"
+    },
+    "cost_function": {
+        "window_length": "PT2H",
+        "window_begin": "2025-03-09T14:00:00Z",
+        "variables": [
+            "u",
+            "v",
+            "t",
+            "q",
+            "sp"
+        ],
+        "cost_type": "3D-Var",
+        "Jb": {
+            "use_estimated_jb_value": "true",
+            "Background": {
+                "state": [
+                    {
+                        "date": "2025-03-09T15:00:00Z",
+                        "term": "PT0H",
+                        "ifile": "0",
+                        "variables": [],
+                        "expver": "OOPS"
+                    }
+                ]
+            },
+            "Covariance": {
+                "covariance": "ensemble_sdl",
+                "date": "2025-03-09T15:00:00Z"
+            }
+        },
+        "Jo": {
+            "screening": "true",
+            "timeslot": "PT2H",
+            "ObsTypes": [
+                {
+                    "naml_obs_setup": "naml_observations_aro",
+                    "odb_name": "ECMA",
+                    "ObsType": "ALLOBS",
+                    "ObsData": {
+                        "obsvalue": "obsvalue"
+                    },
+                    "Covariance": {
+                        "ObsErrorCovariance": {
+                            "obserror": "obserror",
+                            "covariance": "AllObsError"
+                        }
+                    },
+                    "covarianceObsAux": [
+                        {
+                            "type": "VARBC",
+                            "filename": "VARBC.screening",
+                            "namelist": "fort.4"
+                        },
+                        {
+                            "type": "TOVSCV"
+                        }
+                    ],
+                    "stateObsAux": [
+                        {
+                            "type": "VARBC",
+                            "filename": "VARBC.cycle",
+                            "namelist": "fort.4"
+                        },
+                        {
+                            "type": "TOVSCV"
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "variational": {
+        "iteration": [
+            {
+                "iteration": "0",
+                "ensemble_covariance": {
+                    "localization": {
+                        "scale_decomposition": {
+                            "nb_wave_band_peaks": "3",
+                            "wave_band_peak_1": "25",
+                            "wave_band_peak_2": "8",
+                            "wave_band_peak_3": "2",
+                            "horiz_band": [
+                                {
+                                    "v_length_scale": "0.3",
+                                    "hlen_001": "25000",
+                                    "hlen_002": "25000",
+                                    "levl_001": "1",
+                                    "levl_002": "91",
+                                    "loc_type": "1"
+                                },
+                                {
+                                    "v_length_scale": "0.3",
+                                    "hlen_001": "75000",
+                                    "hlen_002": "75000",
+                                    "levl_001": "1",
+                                    "levl_002": "91",
+                                    "loc_type": "1"
+                                },
+                                {
+                                    "v_length_scale": "0.3",
+                                    "hlen_001": "150000",
+                                    "hlen_002": "150000",
+                                    "levl_001": "1",
+                                    "levl_002": "91",
+                                    "loc_type": "1"
+                                }
+                            ]
+                        }
+                    },
+                    "members": "8",
+                    "inflation": "1.0",
+                    "variables": [
+                        "u",
+                        "v",
+                        "t",
+                        "q",
+                        "sp"
+                    ],
+                    "sub_ens": "1",
+                    "state": [
+                        {
+                            "ifile": "1",
+                            "expver": "unused",
+                            "filename": "ICMSHM001_term-0003",
+                            "dont_check_last_file": "yes"
+                        },
+                        {
+                            "ifile": "1",
+                            "expver": "unused",
+                            "filename": "ICMSHM002_term-0003",
+                            "dont_check_last_file": "yes"
+                        },
+                        {
+                            "ifile": "1",
+                            "expver": "unused",
+                            "filename": "ICMSHM003_term-0003",
+                            "dont_check_last_file": "yes"
+                        },
+                        {
+                            "ifile": "1",
+                            "expver": "unused",
+                            "filename": "ICMSHM004_term-0003",
+                            "dont_check_last_file": "yes"
+                        },
+                        {
+                            "ifile": "1",
+                            "expver": "unused",
+                            "filename": "ICMSHM005_term-0003",
+                            "dont_check_last_file": "yes"
+                        },
+                        {
+                            "ifile": "1",
+                            "expver": "unused",
+                            "filename": "ICMSHM006_term-0003",
+                            "dont_check_last_file": "yes"
+                        },
+                        {
+                            "ifile": "1",
+                            "expver": "unused",
+                            "filename": "ICMSHM007_term-0003",
+                            "dont_check_last_file": "yes"
+                        },
+                        {
+                            "ifile": "1",
+                            "expver": "unused",
+                            "filename": "ICMSHM008_term-0003",
+                            "check_last_file": "yes"
+                        }
+                    ]
+                },
+                "screening": {
+                    "active": "true",
+                    "departures": {
+                        "obsvalue": "fg_depar@body",
+                        "biasvalue": "biascorr@body"
+                    }
+                },
+                "resolution": {
+                    "namelist": "naml_standard_geometry",
+                    "orogfile": "ICMSHOOPSINIT"
+                },
+                "linearmodel": {
+                    "version": "IfsTLM",
+                    "namelist": "naml_linear_model_aro",
+                    "tstep": "PT2H",
+                    "trajectory": {
+                        "namelist": "naml_traj_model_3dv_aro",
+                        "tstep": "PT2H",
+                        "forcing": {
+                            "variables": [
+                                "u",
+                                "v",
+                                "t",
+                                "q",
+                                "sp"
+                            ]
+                        }
+                    }
+                },
+                "ninner": "40",
+                "ninnermin": "0",
+                "gradient_norm_reduction": "1e-02",
+                "onlineDiagnostics": {
+                    "tlmTaylorTest": "false",
+                    "tlmApproxTest": "false",
+                    "tlmPropagTest": "false",
+                    "adjTlmTest": "false",
+                    "adjObsTest": "false",
+                    "residue": {
+                        "obsvalue": "an_depar@body"
+                    }
+                },
+                "reload_observations": "true",
+                "statesObsAux": [
+                    {
+                        "stateObsAux": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.screening",
+                                "namelist": "fort.4"
+                            }
+                        ]
+                    }
+                ],
+                "statesObsAuxReset": [
+                    {
+                        "stateObsAuxReset": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.screening",
+                                "namelist": "fort.4"
+                            },
+                            {
+                                "type": "TOVSCV"
+                            }
+                        ]
+                    }
+                ],
+                "covariancesObsAux": [
+                    {
+                        "covarianceObsAux": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.screening",
+                                "namelist": "fort.4",
+                                "update": "true"
+                            },
+                            {
+                                "type": "TOVSCV",
+                                "update": "false"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "minimizer": {
+        "algorithm": "SQRTPLanczos",
+        "linfoconv": "true"
+    },
+    "output": {
+        "namelist": "naml_write_analysis_aro",
+        "anoffset": "PT0H",
+        "steps": "PT0S"
+    },
+    "final": {
+        "diagnostics": {
+            "departures": {
+                "obsvalue": "hires@update_1"
+            }
+        },
+        "statesObsAux": [
+            {
+                "stateObsAux": [
+                    {
+                        "type": "VARBC",
+                        "filename": "VARBC.cycle.new"
+                    }
+                ]
+            }
+        ]
+    }
+}

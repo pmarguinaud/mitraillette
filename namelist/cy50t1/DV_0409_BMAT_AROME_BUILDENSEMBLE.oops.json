@@ -1,0 +1,124 @@
+{
+    "model": {
+        "namelist": "naml_nonlinear_model_3dv_aro",
+        "tstep": "PT1800S"
+    },
+    "resolution": {
+        "namelist": "naml_standard_geometry",
+        "orogfile": "unused"
+    },
+    "variables": {
+        "variables": []
+    },
+    "linear_variables": {
+        "variables": [
+            "u",
+            "v",
+            "t",
+            "q",
+            "sp"
+        ]
+    },
+    "expver": "OOPS",
+    "window_length": "PT6H",
+    "window_begin": "2025-03-09T12:00:00Z",
+    "Bmat": {
+        "covariance": "static",
+        "date": "2025-03-09T12:00:00Z",
+        "namelist": "naml_bmatrix_aro"
+    },
+    "state": {
+        "date": "2025-03-09T12:00:00Z",
+        "ifile": "0",
+        "term": "PT0H",
+        "variables": [],
+        "expver": "OOPS"
+    },
+    "ensemble": [
+        {
+            "members": "8",
+            "inflation": "1.0",
+            "variables": [
+                "u",
+                "v",
+                "t",
+                "q",
+                "sp"
+            ],
+            "state": [
+                {
+                    "ifile": "1",
+                    "term": "PT0H",
+                    "anoffset": "PT0H",
+                    "expver": "unused",
+                    "namelist": "naml_write_dx_m001",
+                    "filename": "ICMSHM001_term-0003",
+                    "dont_check_last_file": "yes"
+                },
+                {
+                    "ifile": "1",
+                    "term": "PT0H",
+                    "anoffset": "PT0H",
+                    "expver": "unused",
+                    "namelist": "naml_write_dx_m002",
+                    "filename": "ICMSHM002_term-0003",
+                    "dont_check_last_file": "yes"
+                },
+                {
+                    "ifile": "1",
+                    "term": "PT0H",
+                    "anoffset": "PT0H",
+                    "expver": "unused",
+                    "namelist": "naml_write_dx_m003",
+                    "filename": "ICMSHM003_term-0003",
+                    "dont_check_last_file": "yes"
+                },
+                {
+                    "ifile": "1",
+                    "term": "PT0H",
+                    "anoffset": "PT0H",
+                    "expver": "unused",
+                    "namelist": "naml_write_dx_m004",
+                    "filename": "ICMSHM004_term-0003",
+                    "dont_check_last_file": "yes"
+                },
+                {
+                    "ifile": "1",
+                    "term": "PT0H",
+                    "anoffset": "PT0H",
+                    "expver": "unused",
+                    "namelist": "naml_write_dx_m005",
+                    "filename": "ICMSHM005_term-0003",
+                    "dont_check_last_file": "yes"
+                },
+                {
+                    "ifile": "1",
+                    "term": "PT0H",
+                    "anoffset": "PT0H",
+                    "expver": "unused",
+                    "namelist": "naml_write_dx_m006",
+                    "filename": "ICMSHM006_term-0003",
+                    "dont_check_last_file": "yes"
+                },
+                {
+                    "ifile": "1",
+                    "term": "PT0H",
+                    "anoffset": "PT0H",
+                    "expver": "unused",
+                    "namelist": "naml_write_dx_m007",
+                    "filename": "ICMSHM007_term-0003",
+                    "dont_check_last_file": "yes"
+                },
+                {
+                    "ifile": "1",
+                    "term": "PT0H",
+                    "anoffset": "PT0H",
+                    "expver": "unused",
+                    "namelist": "naml_write_dx_m008",
+                    "filename": "ICMSHM008_term-0003",
+                    "check_last_file": "yes"
+                }
+            ]
+        }
+    ]
+}
