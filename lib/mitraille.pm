@@ -213,6 +213,7 @@ my $FAIL = 'black on_red';
 my @STATUS =
 (
 # Message in the output                                                         Status              Color
+  [qr/OUT_OF_MEMORY/,                                                           'OOM',              $FAIL],
   [qr/Command exited with non-zero status/,                                     'non-zero status',  $FAIL],
   [qr/Process received signal/,                                                 'signalled',        $FAIL],
   [qr/mpirun detected that one or more processes exited with non-zero status/,  'non-zero status',  $FAIL],
