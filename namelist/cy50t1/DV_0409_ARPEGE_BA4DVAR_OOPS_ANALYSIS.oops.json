@@ -1,0 +1,538 @@
+{
+    "expver": "OOPS",
+    "resolution": {
+        "namelist": "naml_geometry",
+        "orogfile": "ICMSHOOPSINIT"
+    },
+    "model": {
+        "namelist": "hr_model.nam",
+        "tstep": "PT1800S"
+    },
+    "cost_function": {
+        "window_length": "PT6H",
+        "window_begin": "2022-01-21T03:00:00Z",
+        "variables": [
+            "u",
+            "v",
+            "t",
+            "q",
+            "sp"
+        ],
+        "cost_type": "4D-Var-MF",
+        "Jb": {
+            "use_estimated_jb_value": "true",
+            "Background": {
+                "state": [
+                    {
+                        "date": "2022-01-21T03:00:00Z",
+                        "ifile": "0",
+                        "term": "PT0H",
+                        "variables": [],
+                        "expver": "OOPS"
+                    }
+                ]
+            },
+            "Covariance": {
+                "covariance": "hybrid_general_coeff",
+                "ensemble_weight": {
+                    "matrix": "vertical_profile_multiplier",
+                    "sqrt": "yes",
+                    "top_coefficient": "0.5",
+                    "bottom_coefficient": "0.5",
+                    "top_pressure": "2500",
+                    "bottom_pressure": "15000"
+                },
+                "static_weight": {
+                    "matrix": "vertical_profile_multiplier",
+                    "sqrt": "yes",
+                    "top_coefficient": "0.5",
+                    "bottom_coefficient": "0.5",
+                    "top_pressure": "2500",
+                    "bottom_pressure": "15000"
+                },
+                "static_covariance": {
+                    "covariance": "static",
+                    "date": "2022-01-21T06:00:00Z",
+                    "namelist": "bmatrix.nam"
+                },
+                "ensemble_covariance": {
+                    "covariance": "ensemble",
+                    "date": "2022-01-21T03:00:00Z"
+                }
+            }
+        },
+        "Jo": {
+            "screening": "true",
+            "timeslot": "PT1H",
+            "ObsTypes": [
+                {
+                    "naml_obs_setup": "observations.nam",
+                    "odb_name": "ECMA",
+                    "ObsType": "ALLOBS",
+                    "ObsData": {
+                        "obsvalue": "obsvalue"
+                    },
+                    "Covariance": {
+                        "ObsErrorCovariance": {
+                            "covariance": "AllObsError",
+                            "obserror": "obserror"
+                        }
+                    },
+                    "covarianceObsAux": [
+                        {
+                            "type": "VARBC",
+                            "filename": "VARBC.iter1.new",
+                            "namelist": "fort.4"
+                        },
+                        {
+                            "type": "TOVSCV"
+                        }
+                    ],
+                    "stateObsAux": [
+                        {
+                            "type": "VARBC",
+                            "filename": "VARBC.cycle",
+                            "namelist": "fort.4"
+                        },
+                        {
+                            "type": "TOVSCV"
+                        }
+                    ]
+                }
+            ]
+        },
+        "Jc": [
+            {
+                "jcdfi": {
+                    "type": "DolphChebyshev",
+                    "variables": [
+                        "u",
+                        "v",
+                        "t",
+                        "q",
+                        "sp"
+                    ],
+                    "cutoff": "PT3H",
+                    "alpha": "50.0",
+                    "resetGradFG": "true",
+                    "covariance": {
+                        "variables": [
+                            "u",
+                            "v",
+                            "t",
+                            "q",
+                            "sp"
+                        ],
+                        "namelist": "naml_jc_cov",
+                        "version": "spectral"
+                    }
+                }
+            }
+        ]
+    },
+    "variational": {
+        "iteration": [
+            {
+                "iteration": "0",
+                "Jb": {
+                    "Covariance": {
+                        "static_covariance": {
+                            "date": "2022-01-21T06:00:00Z"
+                        },
+                        "ensemble_covariance": {
+                            "change_of_variable": {
+                                "matrix": "change_of_variable",
+                                "apply_to_lnsp": "1",
+                                "apply_to_wind": "1"
+                            },
+                            "localization": {
+                                "loc_type": "1",
+                                "levl_001": "1",
+                                "levl_002": "6",
+                                "levl_003": "16",
+                                "levl_004": "36",
+                                "levl_005": "106",
+                                "hlen_001": "1000000",
+                                "hlen_002": "750000",
+                                "hlen_003": "350000",
+                                "hlen_004": "250000",
+                                "hlen_005": "150000",
+                                "v_length_scale": "0.5"
+                            },
+                            "members": "8",
+                            "inflation": "1.0",
+                            "variables": [
+                                "u",
+                                "v",
+                                "t",
+                                "q",
+                                "sp"
+                            ],
+                            "state": [
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m001_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m002_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m003_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m004_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m005_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m006_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m007_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m008_d2022012106_t-0003:00",
+                                    "check_last_file": "yes"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "screening": {
+                    "active": "true",
+                    "departures": {
+                        "obsvalue": "fg_depar@body",
+                        "biasvalue": "biascorr@body"
+                    },
+                    "dfi": {
+                        "type": "DolphChebyshev",
+                        "filter_span": "PT6H",
+                        "cutoff": "PT3H",
+                        "variables": [
+                            "u",
+                            "v",
+                            "t",
+                            "q",
+                            "sp"
+                        ]
+                    }
+                },
+                "explicitChangeResolution": "true",
+                "onlineDiagnostics": {
+                    "auxMinDiags": "true",
+                    "tlmTaylorTest": "false",
+                    "tlmApproxTest": "false",
+                    "tlmPropagTest": "false",
+                    "adjTlmTest": "false",
+                    "adjObsTest": "false",
+                    "residue": {
+                        "obsvalue": "lores@update_1"
+                    }
+                },
+                "resolution": {
+                    "namelist": "naml_t63",
+                    "orogfile": "const.t63.000",
+                    "is_alternative": "true"
+                },
+                "timeslot": "PT1H",
+                "low_resolution_model": {
+                    "namelist": "nonlinear_model_upd1.nam",
+                    "tstep": "PT1800S"
+                },
+                "linearmodel": {
+                    "version": "IfsTLM",
+                    "namelist": "linear_model_upd1.nam",
+                    "tstep": "PT1800S",
+                    "frequency": "PT1800S",
+                    "trajectory": {
+                        "namelist": "traj_model_upd1.nam",
+                        "tstep": "PT1800S"
+                    }
+                },
+                "ninner": "40",
+                "gradient_norm_reduction": "0.001",
+                "diagnostics": {
+                    "departures": {
+                        "obsvalue": "fg_depar@body"
+                    }
+                },
+                "statesObsAuxReset": [
+                    {
+                        "stateObsAuxReset": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.iter1.new",
+                                "namelist": "fort.4"
+                            },
+                            {
+                                "type": "TOVSCV"
+                            }
+                        ]
+                    }
+                ],
+                "statesObsAux": [
+                    {
+                        "stateObsAux": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.iter1.new",
+                                "namelist": "fort.4"
+                            }
+                        ]
+                    }
+                ],
+                "covariancesObsAux": [
+                    {
+                        "covarianceObsAux": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.iter1.new",
+                                "namelist": "fort.4",
+                                "update": "true"
+                            },
+                            {
+                                "type": "TOVSCV",
+                                "update": "false"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "iteration": "1",
+                "explicitChangeResolution": "true",
+                "onlineDiagnostics": {
+                    "auxMinDiags": "true",
+                    "tlmTaylorTest": "false",
+                    "tlmApproxTest": "false",
+                    "tlmPropagTest": "false",
+                    "adjTlmTest": "false",
+                    "adjObsTest": "false",
+                    "residue": {
+                        "obsvalue": "lores@update_2"
+                    }
+                },
+                "Jb": {
+                    "Covariance": {
+                        "static_covariance": {
+                            "date": "2022-01-21T06:00:00Z"
+                        },
+                        "ensemble_covariance": {
+                            "change_of_variable": {
+                                "matrix": "change_of_variable",
+                                "apply_to_lnsp": "1",
+                                "apply_to_wind": "1"
+                            },
+                            "localization": {
+                                "loc_type": "1",
+                                "levl_001": "1",
+                                "levl_002": "6",
+                                "levl_003": "16",
+                                "levl_004": "36",
+                                "levl_005": "106",
+                                "hlen_001": "1000000",
+                                "hlen_002": "750000",
+                                "hlen_003": "350000",
+                                "hlen_004": "250000",
+                                "hlen_005": "150000",
+                                "v_length_scale": "0.5"
+                            },
+                            "members": "8",
+                            "inflation": "1.0",
+                            "variables": [
+                                "u",
+                                "v",
+                                "t",
+                                "q",
+                                "sp"
+                            ],
+                            "state": [
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m001_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m002_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m003_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m004_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m005_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m006_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m007_d2022012106_t-0003:00",
+                                    "dont_check_last_file": "yes"
+                                },
+                                {
+                                    "ifile": "1",
+                                    "expver": "unused",
+                                    "filename": "ens_xb_global63_m008_d2022012106_t-0003:00",
+                                    "check_last_file": "yes"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "resolution": {
+                    "namelist": "naml_t63",
+                    "orogfile": "const.t63.000",
+                    "is_alternative": "true"
+                },
+                "timeslot": "PT1H",
+                "low_resolution_model": {
+                    "namelist": "nonlinear_model_upd2.nam",
+                    "tstep": "PT1800S"
+                },
+                "linearmodel": {
+                    "version": "IfsTLM",
+                    "namelist": "linear_model_upd2.nam",
+                    "tstep": "PT1800S",
+                    "frequency": "PT1800S",
+                    "trajectory": {
+                        "namelist": "traj_model_upd2.nam",
+                        "tstep": "PT1800S"
+                    }
+                },
+                "ninner": "40",
+                "gradient_norm_reduction": "0.001",
+                "diagnostics": {
+                    "departures": {
+                        "obsvalue": "hires@update_2"
+                    }
+                },
+                "varQC": {
+                    "activate": "true"
+                },
+                "statesObsAux": [
+                    {
+                        "stateObsAux": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.iter2.new",
+                                "namelist": "fort.4"
+                            }
+                        ]
+                    }
+                ],
+                "covariancesObsAux": [
+                    {
+                        "covarianceObsAux": [
+                            {
+                                "type": "VARBC",
+                                "filename": "VARBC.iter2.new",
+                                "namelist": "fort.4",
+                                "update": "true"
+                            },
+                            {
+                                "type": "TOVSCV",
+                                "update": "false"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "minimizer": {
+        "algorithm": "SQRTPLanczos",
+        "classic_change_of_variables": "true",
+        "preconditioner": {
+            "maxpairs": "30",
+            "error_threshold": "0.1",
+            "useoldpairs": "true"
+        },
+        "minimizations": "2",
+        "obsAuxFormulations": [
+            {
+                "component": "VARBC",
+                "incremental": "true"
+            },
+            {
+                "component": "TOVSCV",
+                "incremental": "true"
+            }
+        ]
+    },
+    "final": {
+        "varQC": {
+            "activate": "true"
+        },
+        "diagnostics": {
+            "departures": {
+                "obsvalue": "an_depar@body"
+            }
+        },
+        "statesObsAux": [
+            {
+                "stateObsAux": [
+                    {
+                        "type": "VARBC",
+                        "filename": "VARBC.cycle.new"
+                    },
+                    {
+                        "type": "TOVSCV"
+                    }
+                ]
+            }
+        ],
+        "dfi": {
+            "type": "DolphChebyshev",
+            "filter_span": "PT6H",
+            "cutoff": "PT3H",
+            "variables": [],
+            "output": {
+                "namelist": "naml_write_filtered_ana",
+                "anoffset": "PT0H"
+            }
+        }
+    }
+}

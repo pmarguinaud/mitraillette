@@ -15,6 +15,9 @@ INPUTFILES_WORKDIR=/scratch/work/marguina/mitraillette-data
 # LFITOOLS
 EXEC_IFSAUX_LFITOOLS=/home/mf/dp/marp/gco/tampon/bin/xrd/xr46/xr46t1_lfitools-bf.04.IMPIIFC1805.2y.exe
 
+# BUFR tables (test cases imported from Davai)
+export BUFR_TABLES=/opt/softs/libraries/emos/tables/bufr405/000405/
+
 # MPI launcher
 MPIAUTO=/home/gmap/mrpm/marguina/SAVE/mpiauto/mpiauto
 
@@ -32,6 +35,7 @@ module purge
 # variables for perfect reproductibilty for some oper conf.
 export MKL_CBWR=AUTO,STRICT
 export MKL_DEBUG_CPU_TYPE=5
+export MKL_NUM_THREADS=1
 
 export OMP_STACKSIZE=4G
 export KMP_STACKSIZE=4G

@@ -213,12 +213,13 @@ my $FAIL = 'black on_red';
 my @STATUS =
 (
 # Message in the output                                                         Status              Color
+  [qr/OUT_OF_MEMORY/,                                                           'OOM',              $FAIL],
   [qr/Command exited with non-zero status/,                                     'non-zero status',  $FAIL],
   [qr/Process received signal/,                                                 'signalled',        $FAIL],
   [qr/mpirun detected that one or more processes exited with non-zero status/,  'non-zero status',  $FAIL],
   [qr/ABOR1/,                                                                   'ABOR1',            $FAIL],
   [qr/ABORT!/,                                                                  'ABORT!',           $FAIL],
-  [qr/FAILED/,                                                                  'FAILED',           $FAIL],
+  [qr/FAILED at line/,                                                          'FAILED',           $FAIL],
   [qr/SIGSEGV/,                                                                 'SIGSEGV',          $FAIL],
   [qr/CANCELLED/,                                                               'CANCELLED',        $FAIL],
   [qr/forrtl: severe/,                                                          'forrtl: severe',   $FAIL],
@@ -227,20 +228,25 @@ my @STATUS =
   [qr/Cannot access ..\/(?:MASTERODB|ARPEXE)./s,                                'Missing',          $FAIL],
 );
 
-my $STATUS_RE = join ('|', map { "($_->[0])" } @STATUS);
-$STATUS_RE = qr/$STATUS_RE/;
-
 my %COLOR = ((map { ($_->[1], $_->[2]) } @STATUS), COMPLETED => 'green', UNKNOWN => 'yellow');
+
+# Each message is searched separately: a single alternation of all of them is
+# about 50 times slower on large outputs, because it disables the fast substring
+# search of the regex engine
 
 sub jobStatus
 {
   my $text = shift;
 
-  if ($text =~ $STATUS_RE)
+  my ($status, $pos);
+
+  for my $s (@STATUS)
     {
-      my ($i) = grep { defined ($-[$_+1]) } (0 .. $#STATUS);
-      return $STATUS[$i][1];
+      next unless ($text =~ $s->[0]);
+      ($status, $pos) = ($s->[1], $-[0]) if ((! defined ($pos)) || ($-[0] < $pos));
     }
+
+  return $status if (defined ($status));
 
   return $text =~ m/COMPLETED/o ? 'COMPLETED' : 'UNKNOWN';
 }
@@ -249,6 +255,10 @@ sub jobInfo
 {
   my $o = shift;
   my %args = @_;
+
+  # Listing of Davai: the task succeeded, or it would not have been imported
+
+  return {status => 'COMPLETED', CNMEXPL => $1} if ($o =~ m,/([^/]+)/ref/NODE\.001_01$,o);
 
   my $text = &slurp ($o);
 
@@ -319,6 +329,10 @@ sub getReferenceMitraillette
         {
           $mitraillette1 = $reference;
         }
+      elsif (&isDavaiData ($reference))
+        {
+          $mitraillette1 = $reference;
+        }
       else
         {
           die;
@@ -328,9 +342,24 @@ sub getReferenceMitraillette
   return $mitraillette1;
 }
 
+# Data of a Davai experiment imported by davimport: <test>/ref/NODE.001_01 are
+# the listings of Davai, and are used as the outputs of a reference
+
+sub isDavaiData
+{
+  my $dir = shift;
+  my @node = <$dir/*/ref/NODE.001_01>;
+  return (-f "$dir/TAG") && @node;
+}
+
 sub getStatusOutputs
 {
   my $mitraillette = shift;
+
+  if ($mitraillette && &isDavaiData ($mitraillette))
+    {
+      return map { m,/([^/]+)/ref/NODE\.001_01$,o ? ("O$1", $_) : () } <$mitraillette/*/ref/NODE.001_01>;
+    }
 
   my %o = $mitraillette ? map 
   { 
